@@ -24,22 +24,8 @@ options:
   mqtt_tls_client_key: ""
   mqtt_tls_server_host: ""
   ha_discovery_culture: ""
-  gateways:
-    - brand: Legrand
-      model: "88328"
-      serial_number: ""
-      gateway_name: ""
-      gateway_type: Serial
-      port: ""
-      server: ""
-      password: ""
-  devices:
-    - brand: ""
-      model: ""
-      serial_number: ""
-      units:
-        - unit_id: ""
-          endpoint_name: ""
+  gateways: []
+  devices: []
 schema:
   mqtt_server: str
   mqtt_port: port
