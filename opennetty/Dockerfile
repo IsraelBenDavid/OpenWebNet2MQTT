@@ -11,10 +11,17 @@ RUN apt-get update && \
         https://github.com/IsraelBenDavid/opennetty-core.git .
 
 # Restore and publish as a self-contained single-file executable
+# Note: We must detect the target architecture
 RUN dotnet publish src/OpenNetty.Daemon/OpenNetty.Daemon.csproj \
     -c Release \
     -o /app \
-    --self-contained true
+    --self-contained true \
+    -p:PublishSingleFile=true \
+    -p:PublishTrimmed=true \
+    -p:IncludeNativeLibrariesForSelfExtract=true && \
+    # Make sure the binary exists and is executable
+    ls -la /app/opennetty-daemon && \
+    chmod +x /app/opennetty-daemon
 
 # =============================================================================
 # Runtime stage: use HA's base image (Alpine)
@@ -28,7 +35,8 @@ RUN apk add --no-cache \
     openssl
 
 WORKDIR /app
-COPY --from=build /app .
+COPY --from=build /app/opennetty-daemon /app/opennetty-daemon
+COPY --from=build /app/appsettings.json /app/appsettings.json
 
 # Copy the entry-point script
 COPY run.sh /run.sh
