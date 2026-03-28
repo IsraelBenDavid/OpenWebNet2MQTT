@@ -1,4 +1,4 @@
 build_from:
-  aarch64: mcr.microsoft.com/dotnet/runtime:10.0-preview-arm64v8
-  amd64: mcr.microsoft.com/dotnet/runtime:10.0-preview
-  armv7: mcr.microsoft.com/dotnet/runtime:10.0-preview-arm32v7
+  aarch64: debian:bookworm-slim
+  amd64: debian:bookworm-slim
+  armv7: debian:bookworm-slim
