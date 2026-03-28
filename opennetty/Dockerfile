@@ -51,4 +51,4 @@ RUN echo '{ \
   } \
 }' > /app/appsettings.json
 
-CMD [ "/run.sh" ]
+CMD [ "sh", "/run.sh" ]

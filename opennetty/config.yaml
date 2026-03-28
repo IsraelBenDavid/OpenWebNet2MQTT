@@ -13,6 +13,7 @@ map:
   - config:rw
   - ssl:ro
 uart: true
+init: false
 options:
   mqtt_server: ""
   mqtt_port: 1883
