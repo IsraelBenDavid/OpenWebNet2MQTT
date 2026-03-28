@@ -1,8 +1,4 @@
-ARG BUILD_FROM=debian:bookworm-slim
-
-# =============================================================================
-# Build stage: compile the .NET daemon from source
-# =============================================================================
+ARG BUILD_FROM
 FROM mcr.microsoft.com/dotnet/nightly/sdk:10.0 AS build
 
 WORKDIR /src
@@ -18,26 +14,18 @@ RUN apt-get update && \
 RUN dotnet publish src/OpenNetty.Daemon/OpenNetty.Daemon.csproj \
     -c Release \
     -o /app \
-    --self-contained true \
-    -r linux-$(case "$(uname -m)" in \
-        x86_64)  echo "x64"   ;; \
-        aarch64) echo "arm64" ;; \
-        armv7l)  echo "arm"   ;; \
-        *)       echo "x64"   ;; \
-    esac)
+    --self-contained true
 
 # =============================================================================
-# Runtime stage: minimal image with the compiled binary
+# Runtime stage: use HA's base image (Alpine)
 # =============================================================================
 FROM ${BUILD_FROM}
 
-# Install only the native dependencies needed by .NET + jq for config generation
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        jq \
-        libicu72 \
-        libssl3 \
-    && rm -rf /var/lib/apt/lists/*
+# Install jq and runtime dependencies using apk (Alpine package manager)
+RUN apk add --no-cache \
+    jq \
+    libicu \
+    openssl
 
 WORKDIR /app
 COPY --from=build /app .
