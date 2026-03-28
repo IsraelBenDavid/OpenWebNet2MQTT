@@ -1,0 +1,39 @@
+configuration:
+  mqtt_server:
+    name: MQTT Server
+    description: Hostname or IP address of your MQTT broker (e.g. core-mosquitto or 192.168.1.100)
+  mqtt_port:
+    name: MQTT Port
+    description: Port number for the MQTT broker (default 1883, or 8883 for TLS)
+  mqtt_username:
+    name: MQTT Username
+    description: Username for MQTT broker authentication
+  mqtt_password:
+    name: MQTT Password
+    description: Password for MQTT broker authentication
+  mqtt_tls_enabled:
+    name: Enable MQTT TLS
+    description: Enable TLS/SSL for the MQTT connection
+  mqtt_tls_ca_cert:
+    name: TLS CA Certificate
+    description: Filename of the CA certificate in the /ssl directory (e.g. ca.crt)
+  mqtt_tls_client_cert:
+    name: TLS Client Certificate
+    description: Filename of the client certificate in the /ssl directory (e.g. client.crt)
+  mqtt_tls_client_key:
+    name: TLS Client Key
+    description: Filename of the client private key in the /ssl directory (e.g. client.key)
+  mqtt_tls_server_host:
+    name: TLS Server Hostname
+    description: Expected server hostname for TLS certificate validation (e.g. mosquitto)
+  ha_discovery_culture:
+    name: Discovery UI Culture
+    description: >-
+      Language/culture for Home Assistant MQTT discovery payloads (e.g. "en" or "fr").
+      Leave empty to use the system default.
+  gateways:
+    name: Gateways
+    description: OpenWebNet gateways that connect to your BTicino/Legrand devices
+  devices:
+    name: Devices
+    description: BTicino and Legrand devices with their endpoints
