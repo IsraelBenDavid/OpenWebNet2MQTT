@@ -81,6 +81,7 @@ class DevicePersistence:
         """Handle incoming MQTT messages"""
         try:
             # Match homeassistant/device/opennetty-*/config topics
+            # Topic format: homeassistant/device/opennetty-<name>/<serial>/config
             match = re.match(r"homeassistant/device/opennetty-[^/]+/([^/]+)/config", msg.topic)
             if not match:
                 return
@@ -104,20 +105,23 @@ class DevicePersistence:
         except Exception as e:
             print(f"✗ Error processing message: {e}")
 
-    def on_connect(self, client, userdata, flags, rc):
+    def on_connect(self, client, userdata, connect_flags, reason_code, properties):
         """Handle MQTT connection"""
-        if rc == 0:
+        if reason_code.is_success:
             print("✓ Connected to MQTT broker")
             # Subscribe to Home Assistant discovery topics
-            client.subscribe("homeassistant/device/opennetty-+/+/config")
+            # Use # wildcard to match any depth
+            client.subscribe("homeassistant/device/opennetty-#")
             print("✓ Subscribed to discovery topics")
         else:
-            print(f"✗ MQTT connection failed with code {rc}")
+            print(f"✗ MQTT connection failed: {reason_code}")
 
-    def on_disconnect(self, client, userdata, rc):
+    def on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties):
         """Handle MQTT disconnection"""
-        if rc != 0:
-            print(f"⚠ Unexpected MQTT disconnection (code {rc}), will reconnect...")
+        if reason_code.is_success:
+            print("✓ Disconnected from MQTT broker")
+        else:
+            print(f"⚠ Unexpected MQTT disconnection: {reason_code}, will reconnect...")
 
     def connect_mqtt(self):
         """Connect to MQTT broker"""
@@ -134,7 +138,7 @@ class DevicePersistence:
                 print("✗ MQTT server not configured")
                 return False
 
-            self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+            self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
             self.mqtt_client.on_message = self.on_message
             self.mqtt_client.on_connect = self.on_connect
             self.mqtt_client.on_disconnect = self.on_disconnect
