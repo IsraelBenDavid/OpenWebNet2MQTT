@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 CONFIG_PATH="/data/options.json"
 XML_PATH="/app/OpenNettyConfiguration.xml"
@@ -56,8 +56,8 @@ fi
 # -------------------------------------------------------
 GATEWAY_XML=""
 GATEWAY_COUNT=$(jq '.gateways | length' "$CONFIG_PATH")
-
-for (( i=0; i<GATEWAY_COUNT; i++ )); do
+i=0
+while [ "$i" -lt "$GATEWAY_COUNT" ]; do
     GW_BRAND=$(jq -r ".gateways[$i].brand"          "$CONFIG_PATH")
     GW_MODEL=$(jq -r ".gateways[$i].model"           "$CONFIG_PATH")
     GW_SERIAL=$(jq -r ".gateways[$i].serial_number"  "$CONFIG_PATH")
@@ -71,6 +71,7 @@ for (( i=0; i<GATEWAY_COUNT; i++ )); do
     if [ -z "$GW_BRAND" ] || [ "$GW_BRAND" = "null" ] || \
        [ -z "$GW_MODEL" ] || [ "$GW_MODEL" = "null" ] || \
        [ -z "$GW_SERIAL" ] || [ "$GW_SERIAL" = "null" ]; then
+        i=$((i + 1))
         continue
     fi
 
@@ -96,6 +97,7 @@ for (( i=0; i<GATEWAY_COUNT; i++ )); do
     <Gateway ${GW_ATTRS} />
   </Device>
 "
+    i=$((i + 1))
 done
 
 # -------------------------------------------------------
@@ -103,8 +105,8 @@ done
 # -------------------------------------------------------
 DEVICE_XML=""
 DEVICE_COUNT=$(jq '.devices | length' "$CONFIG_PATH")
-
-for (( i=0; i<DEVICE_COUNT; i++ )); do
+i=0
+while [ "$i" -lt "$DEVICE_COUNT" ]; do
     DEV_BRAND=$(jq -r ".devices[$i].brand"          "$CONFIG_PATH")
     DEV_MODEL=$(jq -r ".devices[$i].model"           "$CONFIG_PATH")
     DEV_SERIAL=$(jq -r ".devices[$i].serial_number"  "$CONFIG_PATH")
@@ -113,17 +115,19 @@ for (( i=0; i<DEVICE_COUNT; i++ )); do
     if [ -z "$DEV_BRAND" ] || [ "$DEV_BRAND" = "null" ] || \
        [ -z "$DEV_MODEL" ] || [ "$DEV_MODEL" = "null" ] || \
        [ -z "$DEV_SERIAL" ] || [ "$DEV_SERIAL" = "null" ]; then
+        i=$((i + 1))
         continue
     fi
 
     UNITS_XML=""
     UNIT_COUNT=$(jq ".devices[$i].units | length" "$CONFIG_PATH")
-
-    for (( j=0; j<UNIT_COUNT; j++ )); do
+    j=0
+    while [ "$j" -lt "$UNIT_COUNT" ]; do
         UNIT_ID=$(jq -r ".devices[$i].units[$j].unit_id"        "$CONFIG_PATH")
         UNIT_NAME=$(jq -r ".devices[$i].units[$j].endpoint_name" "$CONFIG_PATH")
 
         if [ -z "$UNIT_ID" ] || [ "$UNIT_ID" = "null" ]; then
+            j=$((j + 1))
             continue
         fi
 
@@ -136,12 +140,14 @@ for (( i=0; i<DEVICE_COUNT; i++ )); do
     <Unit Id=\"${UNIT_ID}\">
       <Endpoint${EP_ATTR} />
     </Unit>"
+        j=$((j + 1))
     done
 
     DEVICE_XML="${DEVICE_XML}
   <Device Brand=\"${DEV_BRAND}\" Model=\"${DEV_MODEL}\" SerialNumber=\"${DEV_SERIAL}\">${UNITS_XML}
   </Device>
 "
+    i=$((i + 1))
 done
 
 # -------------------------------------------------------
