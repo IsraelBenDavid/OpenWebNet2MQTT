@@ -10,39 +10,40 @@ RUN apt-get update && \
     git clone --depth 1 --branch HA-addon \
         https://github.com/IsraelBenDavid/opennetty-core.git .
 
-# Restore and publish as a self-contained single-file executable
-# Note: We must detect the target architecture
+# Restore dependencies
+RUN dotnet restore src/OpenNetty.Daemon/OpenNetty.Daemon.csproj
+
+# Build and publish
 RUN dotnet publish src/OpenNetty.Daemon/OpenNetty.Daemon.csproj \
     -c Release \
-    -o /app \
-    --self-contained true \
-    -p:PublishSingleFile=true \
-    -p:PublishTrimmed=true \
-    -p:IncludeNativeLibrariesForSelfExtract=true && \
-    # Make sure the binary exists and is executable
-    ls -la /app/opennetty-daemon && \
-    chmod +x /app/opennetty-daemon
+    -o /publish \
+    --no-restore
+
+# List what we got to debug
+RUN echo "=== Build output ===" && \
+    ls -laR /publish && \
+    find /publish -type f -name "*daemon*" -o -name "*.dll"
 
 # =============================================================================
-# Runtime stage: use HA's base image (Alpine)
+# Runtime stage: use .NET runtime (smaller than SDK, includes runtime)
 # =============================================================================
-FROM ${BUILD_FROM}
+FROM mcr.microsoft.com/dotnet/nightly/runtime:10.0
 
-# Install jq and runtime dependencies using apk (Alpine package manager)
-RUN apk add --no-cache \
-    jq \
-    icu \
-    openssl
+# Install jq for config generation
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends jq && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=build /app/opennetty-daemon /app/opennetty-daemon
-COPY --from=build /app/appsettings.json /app/appsettings.json
+
+# Copy published binaries and dependencies
+COPY --from=build /publish .
 
 # Copy the entry-point script
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-# Configure console logging for the Home Assistant log viewer
+# Configure console logging
 RUN echo '{ \
   "Logging": { \
     "LogLevel": { \
