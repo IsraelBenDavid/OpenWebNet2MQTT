@@ -26,7 +26,6 @@ options:
   mqtt_tls_server_host: ""
   ha_discovery_culture: ""
   gateways: []
-  devices: []
 schema:
   mqtt_server: str
   mqtt_port: port
@@ -47,11 +46,4 @@ schema:
       port: str?
       server: str?
       password: str?
-  devices:
-    - brand: list(Legrand|BTicino)?
-      model: str?
-      serial_number: str?
-      units:
-        - unit_id: str?
-          endpoint_name: str?
 hassio_api: false

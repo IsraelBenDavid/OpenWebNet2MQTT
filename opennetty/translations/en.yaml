@@ -34,6 +34,3 @@ configuration:
   gateways:
     name: Gateways
     description: OpenWebNet gateways that connect to your BTicino/Legrand devices
-  devices:
-    name: Devices
-    description: BTicino and Legrand devices with their endpoints

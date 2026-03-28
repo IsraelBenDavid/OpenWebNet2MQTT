@@ -2,7 +2,7 @@
 set -eu
 
 CONFIG_PATH="/data/options.json"
-DISCOVERED_DEVICES_PATH="/data/discovered-devices.json"
+DEVICES_LIST_PATH="/data/devices.json"
 XML_PATH="/app/OpenNettyConfiguration.xml"
 
 echo "OpenNetty Home Assistant Add-on starting..."
@@ -102,116 +102,59 @@ while [ "$i" -lt "$GATEWAY_COUNT" ]; do
 done
 
 # -------------------------------------------------------
-# Build <Device> nodes for user-configured devices
+# Load devices from internal devices list
 # -------------------------------------------------------
 DEVICE_XML=""
-DEVICE_COUNT=$(jq '.devices | length' "$CONFIG_PATH")
-i=0
-while [ "$i" -lt "$DEVICE_COUNT" ]; do
-    DEV_BRAND=$(jq -r ".devices[$i].brand"          "$CONFIG_PATH")
-    DEV_MODEL=$(jq -r ".devices[$i].model"           "$CONFIG_PATH")
-    DEV_SERIAL=$(jq -r ".devices[$i].serial_number"  "$CONFIG_PATH")
-
-    # Skip entries with empty required fields
-    if [ -z "$DEV_BRAND" ] || [ "$DEV_BRAND" = "null" ] || \
-       [ -z "$DEV_MODEL" ] || [ "$DEV_MODEL" = "null" ] || \
-       [ -z "$DEV_SERIAL" ] || [ "$DEV_SERIAL" = "null" ]; then
-        i=$((i + 1))
-        continue
-    fi
-
-    UNITS_XML=""
-    UNIT_COUNT=$(jq ".devices[$i].units | length" "$CONFIG_PATH")
-    j=0
-    while [ "$j" -lt "$UNIT_COUNT" ]; do
-        UNIT_ID=$(jq -r ".devices[$i].units[$j].unit_id"        "$CONFIG_PATH")
-        UNIT_NAME=$(jq -r ".devices[$i].units[$j].endpoint_name" "$CONFIG_PATH")
-
-        if [ -z "$UNIT_ID" ] || [ "$UNIT_ID" = "null" ]; then
-            j=$((j + 1))
-            continue
-        fi
-
-        EP_ATTR=""
-        if [ -n "$UNIT_NAME" ] && [ "$UNIT_NAME" != "null" ]; then
-            EP_ATTR=" Name=\"${UNIT_NAME}\""
-        fi
-
-        UNITS_XML="${UNITS_XML}
-    <Unit Id=\"${UNIT_ID}\">
-      <Endpoint${EP_ATTR} />
-    </Unit>"
-        j=$((j + 1))
-    done
-
-    DEVICE_XML="${DEVICE_XML}
-  <Device Brand=\"${DEV_BRAND}\" Model=\"${DEV_MODEL}\" SerialNumber=\"${DEV_SERIAL}\">${UNITS_XML}
-  </Device>
-"
-    i=$((i + 1))
-done
-
-# -------------------------------------------------------
-# Merge discovered devices from previous scans
-# -------------------------------------------------------
-DISCOVERED_DEVICE_XML=""
-if [ -f "$DISCOVERED_DEVICES_PATH" ]; then
-    echo "Found discovered devices file, merging..."
-    DISCOVERED_COUNT=$(jq '.devices | length' "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo 0)
+if [ -f "$DEVICES_LIST_PATH" ]; then
+    echo "Loading devices from internal list..."
+    DEVICE_COUNT=$(jq '.devices | length' "$DEVICES_LIST_PATH" 2>/dev/null || echo 0)
     i=0
-    while [ "$i" -lt "$DISCOVERED_COUNT" ]; do
-        DISC_BRAND=$(jq -r ".devices[$i].brand"          "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo "null")
-        DISC_MODEL=$(jq -r ".devices[$i].model"           "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo "null")
-        DISC_SERIAL=$(jq -r ".devices[$i].serial_number"  "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo "null")
+    while [ "$i" -lt "$DEVICE_COUNT" ]; do
+        DEV_BRAND=$(jq -r ".devices[$i].brand"          "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
+        DEV_MODEL=$(jq -r ".devices[$i].model"           "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
+        DEV_SERIAL=$(jq -r ".devices[$i].serial_number"  "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
 
         # Skip invalid entries
-        if [ -z "$DISC_BRAND" ] || [ "$DISC_BRAND" = "null" ] || \
-           [ -z "$DISC_MODEL" ] || [ "$DISC_MODEL" = "null" ] || \
-           [ -z "$DISC_SERIAL" ] || [ "$DISC_SERIAL" = "null" ]; then
+        if [ -z "$DEV_BRAND" ] || [ "$DEV_BRAND" = "null" ] || \
+           [ -z "$DEV_MODEL" ] || [ "$DEV_MODEL" = "null" ] || \
+           [ -z "$DEV_SERIAL" ] || [ "$DEV_SERIAL" = "null" ]; then
             i=$((i + 1))
             continue
         fi
 
-        # Check if this device already exists in user config (avoid duplicates)
-        ALREADY_CONFIGURED=$(echo "$DEVICE_XML" | grep -c "SerialNumber=\"${DISC_SERIAL}\"" || echo 0)
-        if [ "$ALREADY_CONFIGURED" -gt 0 ]; then
-            echo "Skipping discovered device ${DISC_SERIAL} (already configured)"
-            i=$((i + 1))
-            continue
-        fi
-
-        DISC_UNITS_XML=""
-        DISC_UNIT_COUNT=$(jq ".devices[$i].units | length" "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo 0)
+        UNITS_XML=""
+        UNIT_COUNT=$(jq ".devices[$i].units | length" "$DEVICES_LIST_PATH" 2>/dev/null || echo 0)
         j=0
-        while [ "$j" -lt "$DISC_UNIT_COUNT" ]; do
-            DISC_UNIT_ID=$(jq -r ".devices[$i].units[$j].unit_id"        "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo "null")
-            DISC_UNIT_NAME=$(jq -r ".devices[$i].units[$j].endpoint_name" "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo "null")
+        while [ "$j" -lt "$UNIT_COUNT" ]; do
+            UNIT_ID=$(jq -r ".devices[$i].units[$j].unit_id"        "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
+            UNIT_NAME=$(jq -r ".devices[$i].units[$j].endpoint_name" "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
 
-            if [ -z "$DISC_UNIT_ID" ] || [ "$DISC_UNIT_ID" = "null" ]; then
+            if [ -z "$UNIT_ID" ] || [ "$UNIT_ID" = "null" ]; then
                 j=$((j + 1))
                 continue
             fi
 
-            DISC_EP_ATTR=""
-            if [ -n "$DISC_UNIT_NAME" ] && [ "$DISC_UNIT_NAME" != "null" ]; then
-                DISC_EP_ATTR=" Name=\"${DISC_UNIT_NAME}\""
+            EP_ATTR=""
+            if [ -n "$UNIT_NAME" ] && [ "$UNIT_NAME" != "null" ]; then
+                EP_ATTR=" Name=\"${UNIT_NAME}\""
             fi
 
-            DISC_UNITS_XML="${DISC_UNITS_XML}
-    <Unit Id=\"${DISC_UNIT_ID}\">
-      <Endpoint${DISC_EP_ATTR} />
+            UNITS_XML="${UNITS_XML}
+    <Unit Id=\"${UNIT_ID}\">
+      <Endpoint${EP_ATTR} />
     </Unit>"
             j=$((j + 1))
         done
 
-        DISCOVERED_DEVICE_XML="${DISCOVERED_DEVICE_XML}
-  <Device Brand=\"${DISC_BRAND}\" Model=\"${DISC_MODEL}\" SerialNumber=\"${DISC_SERIAL}\">${DISC_UNITS_XML}
+        DEVICE_XML="${DEVICE_XML}
+  <Device Brand=\"${DEV_BRAND}\" Model=\"${DEV_MODEL}\" SerialNumber=\"${DEV_SERIAL}\">${UNITS_XML}
   </Device>
 "
         i=$((i + 1))
     done
 else
-    echo "No discovered devices file found (first run)"
+    echo "No devices list found. Run device scan to discover devices."
+    DEVICE_COUNT=0
 fi
 
 # -------------------------------------------------------
@@ -221,7 +164,7 @@ cat > "$XML_PATH" <<EOF
 <Configuration>
 
   <Mqtt ${MQTT_ATTRS} />
-${GATEWAY_XML}${DEVICE_XML}${DISCOVERED_DEVICE_XML}
+${GATEWAY_XML}${DEVICE_XML}
 </Configuration>
 EOF
 
@@ -231,8 +174,7 @@ echo ""
 echo "Configuration summary:"
 echo "  MQTT Server: ${MQTT_SERVER}:${MQTT_PORT}"
 echo "  Gateways configured: $GATEWAY_COUNT"
-echo "  Devices configured: $DEVICE_COUNT"
-echo "  Devices discovered: ${DISCOVERED_COUNT:-0}"
+echo "  Devices in internal list: ${DEVICE_COUNT:-0}"
 echo ""
 echo "Starting OpenNetty daemon..."
 

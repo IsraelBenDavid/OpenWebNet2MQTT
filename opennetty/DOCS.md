@@ -91,35 +91,7 @@ server: "192.168.1.100"
 password: "aJhYiBHk8"
 ```
 
-### Step 3: Add Devices (Optional)
-
-Devices are the individual BTicino/Legrand switches, lights, thermostats, etc. connected to your gateways.
-
-Add one entry per device by clicking **Add** under the **Devices** section:
-
-| Field | Description | Example |
-|-------|-------------|---------|
-| `brand` | `Legrand` or `BTicino` | `Legrand` |
-| `model` | Device model number | `67201` (for PLC switch) |
-| `serial_number` | Device serial number | `597132` |
-| `units[].unit_id` | Unit/module identifier | `2` |
-| `units[].endpoint_name` | Friendly name (becomes MQTT topic) | `Bedroom/Wall light` |
-
-**Example Device with Units:**
-```yaml
-brand: Legrand
-model: "67202"
-serial_number: "479632"
-units:
-  - unit_id: "3"
-    endpoint_name: "Bedroom/Bedside lamp 1"
-  - unit_id: "4"
-    endpoint_name: "Bedroom/Bedside lamp 2"
-```
-
-> **Tip:** For Zigbee and In One devices, units are often auto-discovered. You may not need to add them explicitly unless you want custom names.
-
-Click **Save** once all configuration is complete.
+Click **Save** once all gateways are configured.
 
 ## Starting the Add-on
 
@@ -130,71 +102,55 @@ Click **Save** once all configuration is complete.
 The daemon will:
 - Connect to your MQTT broker
 - Initialize connections to your gateways
-- Begin discovering and monitoring devices
-- Publish MQTT discovery messages for Home Assistant
+- Wait for you to scan devices
 
 ## Automatic Device Discovery
 
-When the add-on starts, it automatically scans your configured gateways and discovers connected devices. These discovered devices are saved to `/data/discovered-devices.json` and automatically added to your configuration.
+The add-on manages devices automatically for you. Unlike gateways which you configure manually, devices are discovered and managed by the system.
 
-**How it works:**
-1. On startup, the daemon scans each gateway for connected devices
-2. New devices are discovered and saved to `/data/discovered-devices.json`
-3. These devices are merged with your manually configured devices
-4. All devices (configured + discovered) are added to the MQTT discovery process
+### How Device Discovery Works
 
-**Using discovered devices:**
-- Discovered devices appear automatically in Home Assistant through MQTT Discovery
-- You can view all discovered devices by checking the add-on logs
-- To make discovered devices permanent, copy them from the log and add them to your **Configuration** → **Devices** section
-- Devices already in your manual configuration are not duplicated
+1. **Initial Start** — Daemon connects to configured gateways via the configured MQTT broker
+2. **Device Scan** — When you request a device scan, the add-on queries all gateways
+3. **Automatic Save** — Discovered devices are automatically saved to `/data/devices.json` (internal list)
+4. **Auto-Load on Restart** — When the daemon restarts, it automatically loads the saved device list
+5. **No Manual Management** — You don't edit the device list manually; the system keeps it updated
 
-**Example log output:**
-```
-Configuration summary:
-  MQTT Server: 192.168.68.124:1883
-  Gateways configured: 1
-  Devices configured: 0
-  Devices discovered: 3
-```
+### Scanning for Devices
+
+Devices are automatically discovered when:
+- The add-on first starts and connects to gateways
+- You manually trigger a device scan
+- New devices are added to your gateways
+
+The discovered devices are saved persistently and used every time the daemon restarts.
+
+### Device List Location
+
+The internal device list is stored at: `/data/devices.json`
+
+This file is:
+- ✅ Automatically created and updated by the add-on
+- ✅ Persisted across add-on restarts
+- ✅ NOT user-editable (managed by the system)
+- ✅ Loaded automatically at startup
 
 ## Viewing Logs
 
 Go to the **Logs** tab to view real-time output:
 - Connection status to MQTT and gateways
-- Device discovery and initialization
-- Discovered devices as they appear
+- Device discovery events
 - State changes and commands
 - Any errors or warnings
 
-Look for lines like:
+Example log output:
 ```
-Found discovered devices file, merging...
-Skipping discovered device XXXXXXXX (already configured)
+Loading devices from internal list...
+Configuration summary:
+  MQTT Server: 192.168.68.124:1883
+  Gateways configured: 1
+  Devices in internal list: 3
 ```
-
-to see device discovery in action.
-
-## Troubleshooting
-
-### "The device model X is not valid"
-- Check that the model number is correct (e.g., `3578` for Zigbee, `F454` for SCS)
-- See the supported devices list below
-
-### "The specified identifier is not a valid hexadecimal"
-- Zigbee devices require hex serial numbers (0-9, A-F only)
-- Example valid: `0026BD26`, `00047400`
-- Example invalid: `gggggg` (contains letters g, h, i, etc.)
-
-### "The frame was rejected by the gateway"
-- Check that the serial port or TCP connection details are correct
-- Verify the gateway is powered on and accessible
-- Try a different serial port if using USB
-
-### No MQTT messages appearing
-- Verify MQTT broker connection details (server, port, credentials)
-- Check that username/password are correct for your MQTT broker
-- Ensure the MQTT broker is running and accessible
 
 ## Supported Devices
 
@@ -205,3 +161,40 @@ Key supported families:
 - **In One by Legrand** — Powerline/Radio devices (model 672xx series)
 - **MyHome/MyHome Up** — SCS-based devices (F454, MH202 gateways)
 - **MyHome Play** — Zigbee devices (3578 gateway, various endpoints)
+
+## Troubleshooting
+
+### "No devices are appearing"
+- Make sure at least one gateway is configured in the **Configuration** tab
+- Check that the gateway is powered on and connected
+- Verify MQTT connection is working (check logs for connection errors)
+- The daemon needs to be running and connected to discover devices
+
+### "The device model X is not valid"
+- Check that the gateway model number is correct
+- Supported models: `3578` (Zigbee), `F454` (SCS), `88213` (In One), etc.
+- See supported devices list above
+
+### "The specified identifier is not a valid hexadecimal"
+- Zigbee gateways require hex serial numbers (0-9, A-F only)
+- Example valid: `0026BD26`, `00047400`
+- Example invalid: `gggggg`, `xyz123`
+
+### "Connection refused" errors
+- Check that your MQTT broker is running and accessible
+- Verify the MQTT server address and port are correct
+- Check username and password if MQTT authentication is enabled
+
+## Advanced: Managing the Device List
+
+If you need to manually inspect or modify the device list:
+
+```bash
+# View the current device list
+cat /data/devices.json
+
+# Clear the device list (will be repopulated on next scan)
+echo '{"devices": []}' > /data/devices.json
+```
+
+However, under normal usage, you should not need to manually edit this file.
