@@ -2,6 +2,7 @@
 set -eu
 
 CONFIG_PATH="/data/options.json"
+DISCOVERED_DEVICES_PATH="/data/discovered-devices.json"
 XML_PATH="/app/OpenNettyConfiguration.xml"
 
 echo "OpenNetty Home Assistant Add-on starting..."
@@ -101,7 +102,7 @@ while [ "$i" -lt "$GATEWAY_COUNT" ]; do
 done
 
 # -------------------------------------------------------
-# Build <Device> nodes for device endpoints
+# Build <Device> nodes for user-configured devices
 # -------------------------------------------------------
 DEVICE_XML=""
 DEVICE_COUNT=$(jq '.devices | length' "$CONFIG_PATH")
@@ -151,13 +152,76 @@ while [ "$i" -lt "$DEVICE_COUNT" ]; do
 done
 
 # -------------------------------------------------------
+# Merge discovered devices from previous scans
+# -------------------------------------------------------
+DISCOVERED_DEVICE_XML=""
+if [ -f "$DISCOVERED_DEVICES_PATH" ]; then
+    echo "Found discovered devices file, merging..."
+    DISCOVERED_COUNT=$(jq '.devices | length' "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo 0)
+    i=0
+    while [ "$i" -lt "$DISCOVERED_COUNT" ]; do
+        DISC_BRAND=$(jq -r ".devices[$i].brand"          "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo "null")
+        DISC_MODEL=$(jq -r ".devices[$i].model"           "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo "null")
+        DISC_SERIAL=$(jq -r ".devices[$i].serial_number"  "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo "null")
+
+        # Skip invalid entries
+        if [ -z "$DISC_BRAND" ] || [ "$DISC_BRAND" = "null" ] || \
+           [ -z "$DISC_MODEL" ] || [ "$DISC_MODEL" = "null" ] || \
+           [ -z "$DISC_SERIAL" ] || [ "$DISC_SERIAL" = "null" ]; then
+            i=$((i + 1))
+            continue
+        fi
+
+        # Check if this device already exists in user config (avoid duplicates)
+        ALREADY_CONFIGURED=$(echo "$DEVICE_XML" | grep -c "SerialNumber=\"${DISC_SERIAL}\"" || echo 0)
+        if [ "$ALREADY_CONFIGURED" -gt 0 ]; then
+            echo "Skipping discovered device ${DISC_SERIAL} (already configured)"
+            i=$((i + 1))
+            continue
+        fi
+
+        DISC_UNITS_XML=""
+        DISC_UNIT_COUNT=$(jq ".devices[$i].units | length" "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo 0)
+        j=0
+        while [ "$j" -lt "$DISC_UNIT_COUNT" ]; do
+            DISC_UNIT_ID=$(jq -r ".devices[$i].units[$j].unit_id"        "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo "null")
+            DISC_UNIT_NAME=$(jq -r ".devices[$i].units[$j].endpoint_name" "$DISCOVERED_DEVICES_PATH" 2>/dev/null || echo "null")
+
+            if [ -z "$DISC_UNIT_ID" ] || [ "$DISC_UNIT_ID" = "null" ]; then
+                j=$((j + 1))
+                continue
+            fi
+
+            DISC_EP_ATTR=""
+            if [ -n "$DISC_UNIT_NAME" ] && [ "$DISC_UNIT_NAME" != "null" ]; then
+                DISC_EP_ATTR=" Name=\"${DISC_UNIT_NAME}\""
+            fi
+
+            DISC_UNITS_XML="${DISC_UNITS_XML}
+    <Unit Id=\"${DISC_UNIT_ID}\">
+      <Endpoint${DISC_EP_ATTR} />
+    </Unit>"
+            j=$((j + 1))
+        done
+
+        DISCOVERED_DEVICE_XML="${DISCOVERED_DEVICE_XML}
+  <Device Brand=\"${DISC_BRAND}\" Model=\"${DISC_MODEL}\" SerialNumber=\"${DISC_SERIAL}\">${DISC_UNITS_XML}
+  </Device>
+"
+        i=$((i + 1))
+    done
+else
+    echo "No discovered devices file found (first run)"
+fi
+
+# -------------------------------------------------------
 # Write the OpenNettyConfiguration.xml
 # -------------------------------------------------------
 cat > "$XML_PATH" <<EOF
 <Configuration>
 
   <Mqtt ${MQTT_ATTRS} />
-${GATEWAY_XML}${DEVICE_XML}
+${GATEWAY_XML}${DEVICE_XML}${DISCOVERED_DEVICE_XML}
 </Configuration>
 EOF
 
@@ -168,6 +232,7 @@ echo "Configuration summary:"
 echo "  MQTT Server: ${MQTT_SERVER}:${MQTT_PORT}"
 echo "  Gateways configured: $GATEWAY_COUNT"
 echo "  Devices configured: $DEVICE_COUNT"
+echo "  Devices discovered: ${DISCOVERED_COUNT:-0}"
 echo ""
 echo "Starting OpenNetty daemon..."
 

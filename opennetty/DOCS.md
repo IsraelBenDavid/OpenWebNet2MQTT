@@ -133,13 +133,47 @@ The daemon will:
 - Begin discovering and monitoring devices
 - Publish MQTT discovery messages for Home Assistant
 
+## Automatic Device Discovery
+
+When the add-on starts, it automatically scans your configured gateways and discovers connected devices. These discovered devices are saved to `/data/discovered-devices.json` and automatically added to your configuration.
+
+**How it works:**
+1. On startup, the daemon scans each gateway for connected devices
+2. New devices are discovered and saved to `/data/discovered-devices.json`
+3. These devices are merged with your manually configured devices
+4. All devices (configured + discovered) are added to the MQTT discovery process
+
+**Using discovered devices:**
+- Discovered devices appear automatically in Home Assistant through MQTT Discovery
+- You can view all discovered devices by checking the add-on logs
+- To make discovered devices permanent, copy them from the log and add them to your **Configuration** → **Devices** section
+- Devices already in your manual configuration are not duplicated
+
+**Example log output:**
+```
+Configuration summary:
+  MQTT Server: 192.168.68.124:1883
+  Gateways configured: 1
+  Devices configured: 0
+  Devices discovered: 3
+```
+
 ## Viewing Logs
 
 Go to the **Logs** tab to view real-time output:
 - Connection status to MQTT and gateways
 - Device discovery and initialization
+- Discovered devices as they appear
 - State changes and commands
 - Any errors or warnings
+
+Look for lines like:
+```
+Found discovered devices file, merging...
+Skipping discovered device XXXXXXXX (already configured)
+```
+
+to see device discovery in action.
 
 ## Troubleshooting
 
