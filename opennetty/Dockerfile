@@ -29,13 +29,9 @@ RUN echo "=== Build output ===" && \
 # =============================================================================
 FROM mcr.microsoft.com/dotnet/nightly/runtime:10.0
 
-# Install jq for config generation and python3 for device persistence
+# Install jq for config generation
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        jq \
-        python3 \
-        python3-pip && \
-    pip3 install paho-mqtt --break-system-packages && \
+    apt-get install -y --no-install-recommends jq && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -43,10 +39,9 @@ WORKDIR /app
 # Copy published binaries and dependencies
 COPY --from=build /publish .
 
-# Copy the entry-point script and persistence service
+# Copy the entry-point script
 COPY run.sh /run.sh
-COPY persist-devices.py /app/persist-devices.py
-RUN chmod +x /run.sh /app/persist-devices.py
+RUN chmod +x /run.sh
 
 # Note: appsettings.json is now generated dynamically by run.sh
 # based on the debug_logging configuration option

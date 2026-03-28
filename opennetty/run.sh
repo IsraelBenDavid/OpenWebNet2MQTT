@@ -154,20 +154,9 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
         i=$((i + 1))
     done
 else
-    echo "No devices list found. Run device scan to discover devices."
+    echo "No devices list found. Devices will be discovered via MQTT."
     DEVICE_COUNT=0
 fi
-
-# -------------------------------------------------------
-# Write the OpenNettyConfiguration.xml
-# -------------------------------------------------------
-cat > "$XML_PATH" <<EOF
-<Configuration>
-
-  <Mqtt ${MQTT_ATTRS} />
-${GATEWAY_XML}${DEVICE_XML}
-</Configuration>
-EOF
 
 # -------------------------------------------------------
 # Configure logging level based on debug_logging setting
@@ -197,6 +186,17 @@ cat > "$APPSETTINGS_PATH" <<EOF
 }
 EOF
 
+# -------------------------------------------------------
+# Write the OpenNettyConfiguration.xml
+# -------------------------------------------------------
+cat > "$XML_PATH" <<EOF
+<Configuration>
+
+  <Mqtt ${MQTT_ATTRS} />
+${GATEWAY_XML}${DEVICE_XML}
+</Configuration>
+EOF
+
 echo "Generated OpenNettyConfiguration.xml:"
 cat "$XML_PATH"
 echo ""
@@ -207,15 +207,9 @@ echo "  Devices in internal list: ${DEVICE_COUNT:-0}"
 echo "  Debug logging: $(if [ "$DEBUG_LOGGING" = "true" ]; then echo "ENABLED"; else echo "disabled"; fi)"
 echo ""
 echo "Starting OpenNetty daemon (logging level: $LOG_LEVEL)..."
-
-# Start the device persistence service in the background
-# This monitors MQTT for discovered devices and saves them to /data/devices.json
-python3 /app/persist-devices.py &
-PERSIST_PID=$!
-echo "Device persistence service started (PID: $PERSIST_PID)"
+echo "Note: Devices discovered during this session will be available in Home Assistant"
+echo "      but will need to be manually saved to persist across restarts."
 echo ""
 
-# Run the daemon (exec replaces the shell so signals propagate correctly)
-# When daemon exits, the persistence service will continue to keep devices
-trap "kill $PERSIST_PID 2>/dev/null || true" TERM INT
+# Run the daemon directly (no persistence service)
 exec /app/opennetty-daemon
