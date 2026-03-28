@@ -208,5 +208,14 @@ echo "  Debug logging: $(if [ "$DEBUG_LOGGING" = "true" ]; then echo "ENABLED"; 
 echo ""
 echo "Starting OpenNetty daemon (logging level: $LOG_LEVEL)..."
 
+# Start the device persistence service in the background
+# This monitors MQTT for discovered devices and saves them to /data/devices.json
+python3 /app/persist-devices.py &
+PERSIST_PID=$!
+echo "Device persistence service started (PID: $PERSIST_PID)"
+echo ""
+
 # Run the daemon (exec replaces the shell so signals propagate correctly)
+# When daemon exits, the persistence service will continue to keep devices
+trap "kill $PERSIST_PID 2>/dev/null || true" TERM INT
 exec /app/opennetty-daemon
