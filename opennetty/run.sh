@@ -164,6 +164,11 @@ EOF
 echo "Generated OpenNettyConfiguration.xml:"
 cat "$XML_PATH"
 echo ""
+echo "Configuration summary:"
+echo "  MQTT Server: ${MQTT_SERVER}:${MQTT_PORT}"
+echo "  Gateways configured: $GATEWAY_COUNT"
+echo "  Devices configured: $DEVICE_COUNT"
+echo ""
 echo "Starting OpenNetty daemon..."
 
 # Run the daemon (exec replaces the shell so signals propagate correctly)
