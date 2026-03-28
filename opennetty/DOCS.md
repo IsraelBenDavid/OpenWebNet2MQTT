@@ -48,6 +48,13 @@ In the add-on's **Configuration** tab:
 | `mqtt_tls_server_host` | Expected TLS server hostname |
 | `ha_discovery_culture` | Language for discovery payloads (`en`, `fr`, or empty for default) |
 
+**Optional: Enable Debug Logging**
+
+For troubleshooting purposes, you can enable debug mode:
+- Toggle **Debug Logging** to see detailed diagnostic information in the logs
+- Useful when diagnosing connection issues or device problems
+- Default is disabled for normal operation
+
 Click **Save** once MQTT is configured.
 
 ### Step 2: Add Gateways
@@ -143,13 +150,40 @@ Go to the **Logs** tab to view real-time output:
 - State changes and commands
 - Any errors or warnings
 
-Example log output:
+### Debug Mode
+
+If you need more detailed information for troubleshooting:
+
+1. Go to **Configuration** tab
+2. Toggle **Debug Logging** to ON
+3. Click **Save**
+4. Go to **Info** tab and restart the add-on
+5. Go to **Logs** tab to see detailed debug output
+
+Debug mode will show:
+- Detailed protocol messages
+- Frame-by-frame communication
+- State evaluation details
+- MQTT message details
+- Full stack traces for errors
+
+Example normal log output:
 ```
-Loading devices from internal list...
 Configuration summary:
   MQTT Server: 192.168.68.124:1883
   Gateways configured: 1
   Devices in internal list: 3
+  Debug logging: disabled
+```
+
+Example debug log output (with more details):
+```
+Configuration summary:
+  Debug logging: ENABLED
+Starting OpenNetty daemon (logging level: Debug)...
+[DEBUG] Frame received: *#...##
+[DEBUG] Message parsed: ...
+[DEBUG] MQTT payload: {...}
 ```
 
 ## Supported Devices

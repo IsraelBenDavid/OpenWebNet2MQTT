@@ -20,6 +20,7 @@ MQTT_TLS_CERT=$(jq -r '.mqtt_tls_client_cert' "$CONFIG_PATH")
 MQTT_TLS_KEY=$(jq -r '.mqtt_tls_client_key'   "$CONFIG_PATH")
 MQTT_TLS_HOST=$(jq -r '.mqtt_tls_server_host' "$CONFIG_PATH")
 HA_CULTURE=$(jq -r '.ha_discovery_culture'     "$CONFIG_PATH")
+DEBUG_LOGGING=$(jq -r '.debug_logging // false' "$CONFIG_PATH")
 
 # -------------------------------------------------------
 # Build the <Mqtt .../> element
@@ -168,6 +169,34 @@ ${GATEWAY_XML}${DEVICE_XML}
 </Configuration>
 EOF
 
+# -------------------------------------------------------
+# Configure logging level based on debug_logging setting
+# -------------------------------------------------------
+LOG_LEVEL="Information"
+if [ "$DEBUG_LOGGING" = "true" ]; then
+    LOG_LEVEL="Debug"
+fi
+
+APPSETTINGS_PATH="/app/appsettings.json"
+cat > "$APPSETTINGS_PATH" <<EOF
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "$LOG_LEVEL",
+      "OpenNetty": "$LOG_LEVEL",
+      "Microsoft": "$(if [ "$LOG_LEVEL" = "Debug" ]; then echo "Information"; else echo "Warning"; fi)"
+    },
+    "Console": {
+      "FormatterName": "Simple",
+      "FormatterOptions": {
+        "SingleLine": true,
+        "TimestampFormat": "yyyy-MM-dd HH:mm:ss "
+      }
+    }
+  }
+}
+EOF
+
 echo "Generated OpenNettyConfiguration.xml:"
 cat "$XML_PATH"
 echo ""
@@ -175,8 +204,9 @@ echo "Configuration summary:"
 echo "  MQTT Server: ${MQTT_SERVER}:${MQTT_PORT}"
 echo "  Gateways configured: $GATEWAY_COUNT"
 echo "  Devices in internal list: ${DEVICE_COUNT:-0}"
+echo "  Debug logging: $(if [ "$DEBUG_LOGGING" = "true" ]; then echo "ENABLED"; else echo "disabled"; fi)"
 echo ""
-echo "Starting OpenNetty daemon..."
+echo "Starting OpenNetty daemon (logging level: $LOG_LEVEL)..."
 
 # Run the daemon (exec replaces the shell so signals propagate correctly)
 exec /app/opennetty-daemon

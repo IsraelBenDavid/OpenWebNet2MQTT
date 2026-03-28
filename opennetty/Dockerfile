@@ -43,21 +43,7 @@ COPY --from=build /publish .
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-# Configure console logging
-RUN echo '{ \
-  "Logging": { \
-    "LogLevel": { \
-      "Default": "Information", \
-      "OpenNetty": "Information" \
-    }, \
-    "Console": { \
-      "FormatterName": "Simple", \
-      "FormatterOptions": { \
-        "SingleLine": true, \
-        "TimestampFormat": "yyyy-MM-dd HH:mm:ss " \
-      } \
-    } \
-  } \
-}' > /app/appsettings.json
+# Note: appsettings.json is now generated dynamically by run.sh
+# based on the debug_logging configuration option
 
 CMD [ "sh", "/run.sh" ]

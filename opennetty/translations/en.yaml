@@ -31,6 +31,9 @@ configuration:
     description: >-
       Language/culture for Home Assistant MQTT discovery payloads (e.g. "en" or "fr").
       Leave empty to use the system default.
+  debug_logging:
+    name: Debug Logging
+    description: Enable debug mode for detailed logging output (helpful for troubleshooting)
   gateways:
     name: Gateways
     description: OpenWebNet gateways that connect to your BTicino/Legrand devices

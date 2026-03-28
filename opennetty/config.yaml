@@ -25,6 +25,7 @@ options:
   mqtt_tls_client_key: ""
   mqtt_tls_server_host: ""
   ha_discovery_culture: ""
+  debug_logging: false
   gateways: []
 schema:
   mqtt_server: str
@@ -37,6 +38,7 @@ schema:
   mqtt_tls_client_key: str?
   mqtt_tls_server_host: str?
   ha_discovery_culture: str?
+  debug_logging: bool
   gateways:
     - brand: list(Legrand|BTicino)
       model: str
