@@ -3523,7 +3523,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 if ((!string.IsNullOrEmpty(existingSn) && string.Equals(existingSn, serialNumber, StringComparison.OrdinalIgnoreCase)) ||
                     (!string.IsNullOrEmpty(existingMac) && string.Equals(existingMac, serialNumber, StringComparison.OrdinalIgnoreCase)))
                 {
-                    return; 
+                    return;
                 }
             }
 
@@ -3538,10 +3538,93 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
 
             _logger.LogInformation("Persisted new device {Brand} {Model} ({SerialNumber}) to OpenNettyConfiguration.xml.",
                 device.Identity.Brand, device.Identity.Model, serialNumber);
+
+            // Also persist to JSON for Home Assistant add-on persistence
+            PersistNewDeviceToJson(device, defaultName);
         }
         catch (Exception exception)
         {
             _logger.LogWarning(exception, "An error occurred while persisting a new device to the XML configuration file.");
+        }
+    }
+
+    /// <summary>
+    /// Persists a newly discovered device to the devices.json file for Home Assistant add-on integration.
+    /// This ensures devices remain available across daemon restarts.
+    /// </summary>
+    private void PersistNewDeviceToJson(OpenNettyDevice device, string defaultName)
+    {
+        try
+        {
+            // Check if running in Home Assistant add-on environment (/data directory exists)
+            var dataDir = "/data";
+            if (!Directory.Exists(dataDir))
+            {
+                return; // Not running in HA add-on environment
+            }
+
+            var jsonPath = Path.Combine(dataDir, "devices.json");
+            var serialNumber = device.Identifier.ToString();
+
+            // Load existing devices list or create new one
+            var devicesObject = new JsonObject { ["devices"] = new JsonArray() };
+
+            if (File.Exists(jsonPath))
+            {
+                try
+                {
+                    var content = File.ReadAllText(jsonPath);
+                    var parsed = JsonNode.Parse(content);
+                    if (parsed is JsonObject existingObj && existingObj["devices"] is JsonArray existingDevices)
+                    {
+                        devicesObject = existingObj;
+
+                        // Check if device already exists
+                        foreach (var item in existingDevices)
+                        {
+                            if (item is JsonObject deviceObj)
+                            {
+                                var sn = (string?) deviceObj["serial_number"];
+                                if (!string.IsNullOrEmpty(sn) && string.Equals(sn, serialNumber, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    return; // Device already exists
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to load existing devices.json, will create new file.");
+                }
+            }
+
+            // Create device entry
+            var deviceEntry = new JsonObject
+            {
+                ["brand"] = Enum.GetName(device.Identity.Brand),
+                ["model"] = device.Identity.Model,
+                ["serial_number"] = serialNumber,
+                ["units"] = new JsonArray()
+            };
+
+            // Add units/endpoints if available
+            if (devicesObject["devices"] is JsonArray devicesArray)
+            {
+                devicesArray.Add(deviceEntry);
+            }
+
+            // Write to file
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var json = JsonSerializer.Serialize(devicesObject, options);
+            File.WriteAllText(jsonPath, json);
+
+            _logger.LogInformation("Persisted new device {Brand} {Model} ({SerialNumber}) to /data/devices.json.",
+                device.Identity.Brand, device.Identity.Model, serialNumber);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "An error occurred while persisting a new device to the JSON configuration file.");
         }
     }
 
