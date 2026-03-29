@@ -3556,17 +3556,12 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
     {
         try
         {
-            // Check if running in Home Assistant add-on environment (/data directory exists)
             var dataDir = "/data";
-            if (!Directory.Exists(dataDir))
-            {
-                return; // Not running in HA add-on environment
-            }
+            if (!Directory.Exists(dataDir)) return;
 
             var jsonPath = Path.Combine(dataDir, "devices.json");
             var serialNumber = device.Identifier.ToString();
 
-            // Load existing devices list or create new one
             var devicesObject = new JsonObject { ["devices"] = new JsonArray() };
 
             if (File.Exists(jsonPath))
@@ -3574,20 +3569,17 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 try
                 {
                     var content = File.ReadAllText(jsonPath);
-                    var parsed = JsonNode.Parse(content);
-                    if (parsed is JsonObject existingObj && existingObj["devices"] is JsonArray existingDevices)
+                    if (JsonNode.Parse(content) is JsonObject existingObj && existingObj["devices"] is JsonArray existingDevices)
                     {
                         devicesObject = existingObj;
-
-                        // Check if device already exists
                         foreach (var item in existingDevices)
                         {
                             if (item is JsonObject deviceObj)
                             {
-                                var sn = (string?) deviceObj["serial_number"];
+                                var sn = (string?)deviceObj["serial_number"];
                                 if (!string.IsNullOrEmpty(sn) && string.Equals(sn, serialNumber, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    return; // Device already exists
+                                    return; 
                                 }
                             }
                         }
@@ -3599,11 +3591,11 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 }
             }
 
-            // Create device entry with unit information so endpoints survive restart
             var unitsArray = new JsonArray();
             foreach (var unit in device.Units)
             {
-                unitsArray.Add(new JsonObject
+                // Cast to JsonNode to avoid AOT generic type resolution errors
+                unitsArray.Add((JsonNode)new JsonObject
                 {
                     ["unit_id"] = unit.Definition.Id
                 });
@@ -3619,13 +3611,12 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
 
             if (devicesObject["devices"] is JsonArray devicesArray)
             {
-                devicesArray.Add(deviceEntry);
+                // Cast to JsonNode to avoid AOT generic type resolution errors
+                devicesArray.Add((JsonNode)deviceEntry);
             }
 
-            // Write to file
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            var json = JsonSerializer.Serialize(devicesObject, options);
-            File.WriteAllText(jsonPath, json);
+            // Use ToJsonString() without options to avoid reflection-based serialization errors
+            File.WriteAllText(jsonPath, devicesObject.ToJsonString());
 
             _logger.LogInformation("Persisted new device {Brand} {Model} ({SerialNumber}) to /data/devices.json.",
                 device.Identity.Brand, device.Identity.Model, serialNumber);
@@ -3748,9 +3739,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         try
         {
             var content = File.ReadAllText(jsonPath);
-            var parsedNode = JsonNode.Parse(content);
-            
-            if (parsedNode is JsonObject devicesObject && devicesObject["devices"] is JsonArray devicesArray)
+            if (JsonNode.Parse(content) is JsonObject devicesObject && devicesObject["devices"] is JsonArray devicesArray)
             {
                 bool modified = false;
                 foreach (var item in devicesArray)
@@ -3769,8 +3758,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
 
                 if (modified)
                 {
-                    var options = new JsonSerializerOptions { WriteIndented = true };
-                    File.WriteAllText(jsonPath, devicesObject.ToJsonString(options));
+                    File.WriteAllText(jsonPath, devicesObject.ToJsonString());
                     _logger.LogInformation("Successfully persisted device name '{Name}' to devices.json.", name);
                 }
                 else
@@ -3812,9 +3800,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         try
         {
             var content = File.ReadAllText(jsonPath);
-            var parsedNode = JsonNode.Parse(content);
-            
-            if (parsedNode is JsonObject devicesObject && devicesObject["devices"] is JsonArray devicesArray)
+            if (JsonNode.Parse(content) is JsonObject devicesObject && devicesObject["devices"] is JsonArray devicesArray)
             {
                 bool modified = false;
                 foreach (var item in devicesArray)
@@ -3824,7 +3810,6 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                         var sn = deviceObj["serial_number"]?.ToString();
                         if (string.Equals(sn, endpoint.Device.Identifier.ToString(), StringComparison.OrdinalIgnoreCase))
                         {
-                            // If it has no unit, it's the base endpoint of the device
                             if (endpoint.Unit is null)
                             {
                                 deviceObj["base_endpoint_name"] = name;
@@ -3853,8 +3838,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
 
                 if (modified)
                 {
-                    var options = new JsonSerializerOptions { WriteIndented = true };
-                    File.WriteAllText(jsonPath, devicesObject.ToJsonString(options));
+                    File.WriteAllText(jsonPath, devicesObject.ToJsonString());
                     _logger.LogInformation("Successfully persisted endpoint name '{Name}' to devices.json.", name);
                 }
                 else
