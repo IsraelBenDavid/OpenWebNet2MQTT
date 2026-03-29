@@ -107,7 +107,7 @@ class DevicePersistence:
 
     def on_connect(self, client, userdata, connect_flags, reason_code, properties):
         """Handle MQTT connection"""
-        if reason_code.is_success:
+        if reason_code == 0:
             print("✓ Connected to MQTT broker")
             # Subscribe to Home Assistant discovery topics
             # Use # wildcard to match any depth
@@ -118,7 +118,7 @@ class DevicePersistence:
 
     def on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties):
         """Handle MQTT disconnection"""
-        if reason_code.is_success:
+        if reason_code == 0:
             print("✓ Disconnected from MQTT broker")
         else:
             print(f"⚠ Unexpected MQTT disconnection: {reason_code}, will reconnect...")
