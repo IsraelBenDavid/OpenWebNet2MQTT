@@ -21,6 +21,10 @@ MQTT_TLS_KEY=$(jq -r '.mqtt_tls_client_key'   "$CONFIG_PATH")
 MQTT_TLS_HOST=$(jq -r '.mqtt_tls_server_host' "$CONFIG_PATH")
 HA_CULTURE=$(jq -r '.ha_discovery_culture'     "$CONFIG_PATH")
 DEBUG_LOGGING=$(jq -r '.debug_logging // false' "$CONFIG_PATH")
+SCAN_RETRY_NO_RESPONSE_DELAY=$(jq -r '.scan_retry_no_response_delay // 2' "$CONFIG_PATH")
+SCAN_RETRY_ERROR_DELAY=$(jq -r '.scan_retry_error_delay // 3' "$CONFIG_PATH")
+SCAN_INTER_DEVICE_DELAY=$(jq -r '.scan_inter_device_delay // 1000' "$CONFIG_PATH")
+SCAN_QUERY_TIMEOUT=$(jq -r '.scan_query_timeout // 5' "$CONFIG_PATH")
 
 # -------------------------------------------------------
 # Build the <Mqtt .../> element
@@ -36,6 +40,12 @@ fi
 if [ -n "$HA_CULTURE" ] && [ "$HA_CULTURE" != "null" ]; then
     MQTT_ATTRS="${MQTT_ATTRS} HomeAssistantDiscoveryUICulture=\"${HA_CULTURE}\""
 fi
+
+# Scan delay attributes
+MQTT_ATTRS="${MQTT_ATTRS} ScanRetryNoResponseDelay=\"${SCAN_RETRY_NO_RESPONSE_DELAY}\""
+MQTT_ATTRS="${MQTT_ATTRS} ScanRetryErrorDelay=\"${SCAN_RETRY_ERROR_DELAY}\""
+MQTT_ATTRS="${MQTT_ATTRS} ScanInterDeviceDelay=\"${SCAN_INTER_DEVICE_DELAY}\""
+MQTT_ATTRS="${MQTT_ATTRS} ScanQueryTimeout=\"${SCAN_QUERY_TIMEOUT}\""
 
 # TLS attributes
 if [ "$MQTT_TLS_ENABLED" = "true" ]; then

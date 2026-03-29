@@ -3096,6 +3096,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
     {
         _logger.LogInformation("Starting Zigbee discovery scan...");
 
+        var mqttOptions = _options.CurrentValue;
         var options = _openNettyOptions.CurrentValue;
 
         await client.EnqueueAsync(new MqttApplicationMessageBuilder()
@@ -3184,19 +3185,19 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 {
                     try
                     {
-                        result = await QueryProductInfoAsync(zigbeeGateway, index, cancellationToken);
+                        result = await QueryProductInfoAsync(zigbeeGateway, index, mqttOptions.ScanQueryTimeout, cancellationToken);
                         if (result is not null)
                         {
                             break; // Successfully received response
                         }
                         
                         _logger.LogDebug("No response for product index {Index} on attempt {Attempt}. Retrying...", index, attempt);
-                        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken); // Wait 1s before retrying
+                        await Task.Delay(TimeSpan.FromSeconds(mqttOptions.ScanRetryNoResponseDelay), cancellationToken);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogDebug(ex, "Error retrieving product info for index {Index} on attempt {Attempt}.", index, attempt);
-                        await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken); // Wait 1s before retrying on error
+                        await Task.Delay(TimeSpan.FromSeconds(mqttOptions.ScanRetryErrorDelay), cancellationToken);
                     }
                 }
 
@@ -3248,7 +3249,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 }
 
                 // Give the Zigbee gateway a short breather before asking for the next index
-                await Task.Delay(TimeSpan.FromMilliseconds(1000), cancellationToken);
+                await Task.Delay(TimeSpan.FromMilliseconds(mqttOptions.ScanInterDeviceDelay), cancellationToken);
             }
 
             _logger.LogInformation("Discovery scan found {Count} unique device identifier(s).", discoveredDevices.Count);
@@ -3303,7 +3304,10 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 // Existing Device Update Logic
                 if (existingDevice is not null)
                 {
-                    if (existingDevice.Identity.Model != model)
+                    // Only update the model if the existing device has the default model (67233).
+                    // Devices with models like 67234 or 67277 were already correctly identified
+                    // and should not be overwritten by the scan.
+                    if (existingDevice.Identity.Model != model && existingDevice.Identity.Model == "67233")
                     {
                         _logger.LogInformation("Updating existing device {Identifier} from model {OldModel} to {NewModel}.", hexId, existingDevice.Identity.Model, model);
                         
@@ -3469,7 +3473,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
     /// The request frame format is *#13**66*index## which is specific to Zigbee USB gateways.
     /// </summary>
     private async Task<(OpenNettyAddress? Address, ImmutableArray<string> Values)?> QueryProductInfoAsync(
-        OpenNettyGateway gateway, int productIndex, CancellationToken cancellationToken)
+        OpenNettyGateway gateway, int productIndex, int queryTimeoutSeconds, CancellationToken cancellationToken)
     {
         // Build the raw ProductInfo request frame: *#13**66*<index>##
         // This uses the DimensionRead format with the product index as a value,
@@ -3501,7 +3505,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         // Wait for the DimensionRead response with a timeout.
         var response = await notifications
             .FirstOrDefault()
-            .Timeout(TimeSpan.FromSeconds(5), AsyncObservable.Return<OpenNettyMessage>(null!))
+            .Timeout(TimeSpan.FromSeconds(queryTimeoutSeconds), AsyncObservable.Return<OpenNettyMessage>(null!))
             .RunAsync(cancellationToken);
 
         if (response is null)

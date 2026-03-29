@@ -207,6 +207,30 @@ public sealed class OpenNettyMqttBuilder
                 options.HomeAssistantDiscoveryUICulture = CultureInfo.GetCultureInfo(culture);
             }
 
+            var scanRetryNoResponseDelay = (int?) element.Attribute("ScanRetryNoResponseDelay");
+            if (scanRetryNoResponseDelay is not null)
+            {
+                options.ScanRetryNoResponseDelay = scanRetryNoResponseDelay.Value;
+            }
+
+            var scanRetryErrorDelay = (int?) element.Attribute("ScanRetryErrorDelay");
+            if (scanRetryErrorDelay is not null)
+            {
+                options.ScanRetryErrorDelay = scanRetryErrorDelay.Value;
+            }
+
+            var scanInterDeviceDelay = (int?) element.Attribute("ScanInterDeviceDelay");
+            if (scanInterDeviceDelay is not null)
+            {
+                options.ScanInterDeviceDelay = scanInterDeviceDelay.Value;
+            }
+
+            var scanQueryTimeout = (int?) element.Attribute("ScanQueryTimeout");
+            if (scanQueryTimeout is not null)
+            {
+                options.ScanQueryTimeout = scanQueryTimeout.Value;
+            }
+
             options.ClientOptions = builder.Build();
         });
 
