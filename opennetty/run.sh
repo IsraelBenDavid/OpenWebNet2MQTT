@@ -207,9 +207,9 @@ echo "  Devices in internal list: ${DEVICE_COUNT:-0}"
 echo "  Debug logging: $(if [ "$DEBUG_LOGGING" = "true" ]; then echo "ENABLED"; else echo "disabled"; fi)"
 echo ""
 echo "Starting OpenNetty daemon (logging level: $LOG_LEVEL)..."
-echo "Note: Devices discovered during this session will be available in Home Assistant"
-echo "      but will need to be manually saved to persist across restarts."
-echo ""
 
-# Run the daemon directly (no persistence service)
+# Start the Python persistence script in the background
+python3 /app/persist-devices.py &
+
+# Run the daemon directly
 exec /app/opennetty-daemon
