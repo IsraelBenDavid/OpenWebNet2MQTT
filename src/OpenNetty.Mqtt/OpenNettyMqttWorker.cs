@@ -3686,7 +3686,6 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
     {
         var options = _openNettyOptions.CurrentValue;
 
-        // Create a new device instance with the updated name setting.
         var updatedDevice = new OpenNettyDevice
         {
             Definition = device.Definition,
@@ -3697,14 +3696,12 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
             Units = device.Units
         };
 
-        // Replace the device in the options list.
         var deviceIndex = options.Devices.IndexOf(device);
         if (deviceIndex >= 0)
         {
             options.Devices[deviceIndex] = updatedDevice;
         }
 
-        // Update all endpoints that reference this device.
         for (var i = 0; i < options.Endpoints.Count; i++)
         {
             if (options.Endpoints[i].Device == device)
@@ -3726,6 +3723,8 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         }
 
         PersistDeviceNameToXml(device.Identifier, name);
+        
+        // Execute JSON persistence
         PersistDeviceNameToJson(device.Identifier, name);
     }
 
@@ -3921,8 +3920,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
     {
         var options = _openNettyOptions.CurrentValue;
         
-        // Determine setting key based on endpoint capabilities
-        OpenNettySetting settingKey = OpenNettySettings.HomeAssistantLightName; // default
+        OpenNettySetting settingKey = OpenNettySettings.HomeAssistantLightName;
         if (endpoint.HasCapability(OpenNettyCapabilities.BasicShutterControl) || 
             endpoint.HasCapability(OpenNettyCapabilities.AdvancedShutterControl))
         {
@@ -3955,6 +3953,8 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         }
 
         PersistEndpointNameToXml(endpoint, name);
+        
+        // Execute JSON persistence
         PersistEndpointNameToJson(endpoint, name);
     }
 
