@@ -3,6 +3,9 @@ FROM mcr.microsoft.com/dotnet/nightly/sdk:10.0 AS build
 
 WORKDIR /src
 
+# Fetch latest commit data to invalidate Docker cache when the branch updates
+ADD "https://api.github.com/repos/IsraelBenDavid/opennetty-core/commits/HA-addon" latest_commit
+
 # Clone the repository source
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git && \
