@@ -4025,7 +4025,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
             }
 
             document.Save(path);
-            _logger.LogInformation("Persisted endpoint name '{Name}' for endpoint {EndpointName} to OpenNettyConfiguration.xml.", name, endpoint.Name);
+            _logger.LogInformation("Persisted endpoint name LALALA '{Name}' for endpoint {EndpointName} to OpenNettyConfiguration.xml.", name, endpoint.Name);
         }
         catch (Exception exception)
         {
