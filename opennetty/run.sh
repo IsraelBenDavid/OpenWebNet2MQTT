@@ -57,7 +57,7 @@ fi
 # Build <Device> nodes for gateways
 # -------------------------------------------------------
 GATEWAY_XML=""
-CONFIGURED_GATEWAYS="" # Add this line
+CONFIGURED_GATEWAYS=""
 GATEWAY_COUNT=$(jq '.gateways | length' "$CONFIG_PATH")
 
 i=0
@@ -66,7 +66,7 @@ while [ "$i" -lt "$GATEWAY_COUNT" ]; do
     GW_MODEL=$(jq -r ".gateways[$i].model"           "$CONFIG_PATH")
     GW_SERIAL=$(jq -r ".gateways[$i].serial_number"  "$CONFIG_PATH")
     
-    CONFIGURED_GATEWAYS="${CONFIGURED_GATEWAYS} ${GW_SERIAL}" # Add this line
+    CONFIGURED_GATEWAYS="${CONFIGURED_GATEWAYS} ${GW_SERIAL}"
     
     GW_NAME=$(jq -r ".gateways[$i].gateway_name"     "$CONFIG_PATH")
     GW_TYPE=$(jq -r ".gateways[$i].gateway_type"     "$CONFIG_PATH")
@@ -142,6 +142,18 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
         fi
 
         UNITS_XML=""
+        # Determine whether the identifier is a MAC address or a Serial Number
+        # and explicitly declare the base endpoint name to ensure unique_id matches discovery.
+        if echo "$DEV_SERIAL" | grep -q ":"; then
+            ID_ATTR="MacAddress=\"${DEV_SERIAL}\""
+        else
+            ID_ATTR="SerialNumber=\"${DEV_SERIAL}\""
+            HEX_LOWER=$(echo "$DEV_SERIAL" | tr '[:upper:]' '[:lower:]')
+            
+            UNITS_XML="
+    <Endpoint Name=\"zigbee/${HEX_LOWER}\" />"
+        fi
+
         UNIT_COUNT=$(jq ".devices[$i].units | length" "$DEVICES_LIST_PATH" 2>/dev/null || echo 0)
         j=0
         while [ "$j" -lt "$UNIT_COUNT" ]; do
@@ -153,7 +165,13 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
                 continue
             fi
 
-            # Always generate the XML tag to prevent OpenNetty from duplicating discovered units
+            if echo "$DEV_SERIAL" | grep -q ":"; then
+               DEFAULT_EP_NAME="tcp_${UNIT_ID}" # Fallback for non-zigbee
+            else
+               DEFAULT_EP_NAME="zigbee/${HEX_LOWER}/${UNIT_ID}"
+            fi
+
+            # Force exact endpoint names to keep Home Assistant unique_ids stable
             if [ -n "$UNIT_NAME" ] && [ "$UNIT_NAME" != "null" ]; then
                 UNITS_XML="${UNITS_XML}
     <Unit Id=\"${UNIT_ID}\">
@@ -161,18 +179,13 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
     </Unit>"
             else
                 UNITS_XML="${UNITS_XML}
-    <Unit Id=\"${UNIT_ID}\" />"
+    <Unit Id=\"${UNIT_ID}\">
+      <Endpoint Name=\"${DEFAULT_EP_NAME}\" />
+    </Unit>"
             fi
             
             j=$((j + 1))
         done
-
-        # Determine whether the identifier is a MAC address or a Serial Number
-        if echo "$DEV_SERIAL" | grep -q ":"; then
-            ID_ATTR="MacAddress=\"${DEV_SERIAL}\""
-        else
-            ID_ATTR="SerialNumber=\"${DEV_SERIAL}\""
-        fi
 
         DEVICE_XML="${DEVICE_XML}
   <Device Brand=\"${DEV_BRAND}\" Model=\"${DEV_MODEL}\" ${ID_ATTR}>${UNITS_XML}
