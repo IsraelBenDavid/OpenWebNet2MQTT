@@ -3177,60 +3177,78 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
 
             for (var index = 0; index < deviceCount; index++)
             {
-                try
+                (OpenNettyAddress? Address, ImmutableArray<string> Values)? result = null;
+                const int maxAttempts = 3;
+
+                for (var attempt = 1; attempt <= maxAttempts; attempt++)
                 {
-                    var result = await QueryProductInfoAsync(zigbeeGateway, index, cancellationToken);
-                    if (result is null)
+                    try
                     {
-                        _logger.LogDebug("No response for product index {Index}.", index);
-                        continue;
-                    }
-
-                    var (address, values) = result.Value;
-
-                    string? hexId = null;
-                    byte unit = 0;
-
-                    if (address is not null)
-                    {
-                        var zigbeeAddr = OpenNettyAddress.ToZigbeeAddress(address.Value);
-                        if (zigbeeAddr.Identifier is not 0)
+                        result = await QueryProductInfoAsync(zigbeeGateway, index, cancellationToken);
+                        if (result is not null)
                         {
-                            hexId = zigbeeAddr.Identifier.ToString("X8", CultureInfo.InvariantCulture);
-                            unit = zigbeeAddr.Unit;
+                            break; // Successfully received response
                         }
+                        
+                        _logger.LogDebug("No response for product index {Index} on attempt {Attempt}. Retrying...", index, attempt);
+                        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken); // Wait 1s before retrying
                     }
-
-                    if (hexId is null && values.Length > 0 &&
-                        uint.TryParse(values[0], CultureInfo.InvariantCulture, out var decimalId) && decimalId != 0)
+                    catch (Exception ex)
                     {
-                        hexId = decimalId.ToString("X8", CultureInfo.InvariantCulture);
-                    }
-
-                    if (hexId is not null)
-                    {
-                        // values[1] holds the device type marker (e.g. 513 for Shutter, 256 for Switch)
-                        var type = values.Length > 1 ? values[1] : string.Empty;
-
-                        if (discoveredDevices.TryGetValue(hexId, out var existing))
-                        {
-                            discoveredDevices[hexId] = (
-                                string.IsNullOrEmpty(type) ? existing.Type : type, 
-                                Math.Max(unit, existing.MaxUnit)
-                            );
-                        }
-                        else
-                        {
-                            discoveredDevices[hexId] = (type, unit);
-                        }
-
-                        _logger.LogDebug("Product index {Index}: device identifier {Identifier}, unit {Unit}, type {Type}.", index, hexId, unit, type);
+                        _logger.LogDebug(ex, "Error retrieving product info for index {Index} on attempt {Attempt}.", index, attempt);
+                        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken); // Wait 1s before retrying on error
                     }
                 }
-                catch (Exception ex)
+
+                if (result is null)
                 {
-                    _logger.LogDebug(ex, "Could not retrieve product info for index {Index}, skipping.", index);
+                    _logger.LogWarning("Failed to retrieve product info for index {Index} after {Attempts} attempts. Skipping.", index, maxAttempts);
+                    continue;
                 }
+
+                var (address, values) = result.Value;
+
+                string? hexId = null;
+                byte unit = 0;
+
+                if (address is not null)
+                {
+                    var zigbeeAddr = OpenNettyAddress.ToZigbeeAddress(address.Value);
+                    if (zigbeeAddr.Identifier is not 0)
+                    {
+                        hexId = zigbeeAddr.Identifier.ToString("X8", CultureInfo.InvariantCulture);
+                        unit = zigbeeAddr.Unit;
+                    }
+                }
+
+                if (hexId is null && values.Length > 0 &&
+                    uint.TryParse(values[0], CultureInfo.InvariantCulture, out var decimalId) && decimalId != 0)
+                {
+                    hexId = decimalId.ToString("X8", CultureInfo.InvariantCulture);
+                }
+
+                if (hexId is not null)
+                {
+                    // values[1] holds the device type marker (e.g. 513 for Shutter, 256 for Switch)
+                    var type = values.Length > 1 ? values[1] : string.Empty;
+
+                    if (discoveredDevices.TryGetValue(hexId, out var existing))
+                    {
+                        discoveredDevices[hexId] = (
+                            string.IsNullOrEmpty(type) ? existing.Type : type, 
+                            Math.Max(unit, existing.MaxUnit)
+                        );
+                    }
+                    else
+                    {
+                        discoveredDevices[hexId] = (type, unit);
+                    }
+
+                    _logger.LogDebug("Product index {Index}: device identifier {Identifier}, unit {Unit}, type {Type}.", index, hexId, unit, type);
+                }
+
+                // Give the Zigbee gateway a short breather before asking for the next index
+                await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationToken);
             }
 
             _logger.LogInformation("Discovery scan found {Count} unique device identifier(s).", discoveredDevices.Count);
