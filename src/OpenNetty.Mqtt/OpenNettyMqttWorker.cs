@@ -3730,7 +3730,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
     }
 
 
-/// <summary>
+    /// <summary>
     /// Persists a device name change to the devices.json file for Home Assistant add-on persistence.
     /// </summary>
     private void PersistDeviceNameToJson(OpenNettyDeviceIdentifier identifier, string name)
@@ -3756,7 +3756,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 {
                     if (item is JsonObject deviceObj)
                     {
-                        var sn = (string?)deviceObj["serial_number"];
+                        var sn = deviceObj["serial_number"]?.GetValue<string>();
                         if (string.Equals(sn, identifier.ToString(), StringComparison.OrdinalIgnoreCase))
                         {
                             deviceObj["name"] = name;
@@ -3766,7 +3766,8 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 }
 
                 var options = new JsonSerializerOptions { WriteIndented = true };
-                File.WriteAllText(jsonPath, JsonSerializer.Serialize(devicesObject, options));
+                File.WriteAllText(jsonPath, devicesObject.ToJsonString(options));
+                _logger.LogInformation("Persisted device name '{Name}' to devices.json.", name);
             }
         }
         catch (Exception exception)
@@ -3806,10 +3807,9 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 {
                     if (item is JsonObject deviceObj)
                     {
-                        var sn = (string?)deviceObj["serial_number"];
+                        var sn = deviceObj["serial_number"]?.GetValue<string>();
                         if (string.Equals(sn, endpoint.Device.Identifier.ToString(), StringComparison.OrdinalIgnoreCase))
                         {
-                            // If it has no unit, it's the base endpoint of the device
                             if (endpoint.Unit is null)
                             {
                                 deviceObj["base_endpoint_name"] = name;
@@ -3818,10 +3818,14 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                             {
                                 foreach (var unitItem in unitsArray)
                                 {
-                                    if (unitItem is JsonObject unitObj && (byte?)unitObj["unit_id"] == endpoint.Unit.Definition.Id)
+                                    if (unitItem is JsonObject unitObj)
                                     {
-                                        unitObj["endpoint_name"] = name;
-                                        break;
+                                        var unitId = unitObj["unit_id"]?.GetValue<int>();
+                                        if (unitId == endpoint.Unit.Definition.Id)
+                                        {
+                                            unitObj["endpoint_name"] = name;
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -3831,7 +3835,8 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 }
 
                 var options = new JsonSerializerOptions { WriteIndented = true };
-                File.WriteAllText(jsonPath, JsonSerializer.Serialize(devicesObject, options));
+                File.WriteAllText(jsonPath, devicesObject.ToJsonString(options));
+                _logger.LogInformation("Persisted endpoint name '{Name}' to devices.json.", name);
             }
         }
         catch (Exception exception)
