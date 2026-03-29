@@ -109,9 +109,11 @@ class DevicePersistence:
         """Handle MQTT connection"""
         if reason_code == 0:
             print("✓ Connected to MQTT broker")
-            # Subscribe to Home Assistant discovery topics
-            # Use # wildcard to match any depth
-            client.subscribe("homeassistant/device/opennetty-#")
+            
+            # Subscribe to the parent device topic
+            # The regex in on_message will filter the specific opennetty topics
+            client.subscribe("homeassistant/device/#")
+            
             print("✓ Subscribed to discovery topics")
         else:
             print(f"✗ MQTT connection failed: {reason_code}")
