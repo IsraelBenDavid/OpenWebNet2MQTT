@@ -160,7 +160,6 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
 
             UNITS_XML="${UNITS_XML}
     <Unit Id=\"${UNIT_ID}\">
-      <Endpoint${EP_ATTR} />
     </Unit>"
             j=$((j + 1))
         done
