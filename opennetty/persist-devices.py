@@ -58,12 +58,31 @@ class DevicePersistence:
             print(f"✓ No existing devices file, starting fresh")
             self.save_devices()
 
-    def save_devices(self):
-        """Save discovered devices to /data/devices.json"""
+    def save_devices(self, new_device_info=None):
+        """
+        Save discovered devices to /data/devices.json.
+        Reads fresh from disk first to avoid overwriting changes made by the C# daemon.
+        """
+        latest_data = {"devices": []}
+        
+        if DEVICES_LIST_PATH.exists():
+            try:
+                with open(DEVICES_LIST_PATH, 'r') as f:
+                    latest_data = json.load(f)
+            except Exception as e:
+                print(f"⚠ Error reading existing devices: {e}")
+                latest_data = self.discovered_devices
+        else:
+            latest_data = self.discovered_devices
+
+        if new_device_info:
+            latest_data["devices"].append(new_device_info)
+            
         try:
             with open(DEVICES_LIST_PATH, 'w') as f:
-                json.dump(self.discovered_devices, f, indent=2)
-            print(f"✓ Saved {len(self.discovered_devices['devices'])} devices to {DEVICES_LIST_PATH}")
+                json.dump(latest_data, f, indent=2)
+            print(f"✓ Saved {len(latest_data['devices'])} devices to {DEVICES_LIST_PATH}")
+            self.discovered_devices = latest_data
         except Exception as e:
             print(f"✗ Error saving devices: {e}")
 
@@ -133,9 +152,8 @@ class DevicePersistence:
 
             # Add to our list
             print(f"✓ Discovered device: {device_info['brand']} {device_info['model']} ({serial})")
-            self.discovered_devices["devices"].append(device_info)
             self.device_serials.add(serial)
-            self.save_devices()
+            self.save_devices(device_info)
 
         except Exception as e:
             print(f"✗ Error processing message: {e}")
