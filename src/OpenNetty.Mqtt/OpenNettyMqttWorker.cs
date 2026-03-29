@@ -3505,6 +3505,8 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
             var path = Path.Combine(AppContext.BaseDirectory, "OpenNettyConfiguration.xml");
             if (!File.Exists(path))
             {
+                // If XML does not exist, persist to JSON instead
+                PersistNewDeviceToJson(device, defaultName);
                 return;
             }
 
@@ -3539,8 +3541,9 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
             _logger.LogInformation("Persisted new device {Brand} {Model} ({SerialNumber}) to OpenNettyConfiguration.xml.",
                 device.Identity.Brand, device.Identity.Model, serialNumber);
 
-            // Also persist to JSON for Home Assistant add-on persistence
-            PersistNewDeviceToJson(device, defaultName);
+            // Removed the call to PersistNewDeviceToJson(device, defaultName) here.
+            // Saving to both files causes the daemon to load the device twice on restart,
+            // resulting in duplicate entities in Home Assistant.
         }
         catch (Exception exception)
         {
