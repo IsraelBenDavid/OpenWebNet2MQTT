@@ -29,21 +29,26 @@ RUN echo "=== Build output ===" && \
 # =============================================================================
 FROM mcr.microsoft.com/dotnet/nightly/runtime:10.0
 
-# Install jq for config generation
+# Install jq, python3, and venv
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends jq && \
+    apt-get install -y --no-install-recommends jq python3 python3-pip python3-venv && \
     rm -rf /var/lib/apt/lists/*
+
+# Create a virtual environment and install paho-mqtt
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip3 install paho-mqtt
 
 WORKDIR /app
 
 # Copy published binaries and dependencies
 COPY --from=build /publish .
 
-# Copy the entry-point script
+# Copy the entry-point script and the persistence script
 COPY run.sh /run.sh
-RUN chmod +x /run.sh
+COPY persist-devices.py /app/persist-devices.py
 
-# Note: appsettings.json is now generated dynamically by run.sh
-# based on the debug_logging configuration option
+RUN chmod +x /run.sh && \
+    chmod +x /app/persist-devices.py
 
 CMD [ "sh", "/run.sh" ]
