@@ -101,9 +101,10 @@ class DevicePersistence:
                     except (ValueError, IndexError):
                         pass
 
+            # Check for standard 'model' field first, fallback to 'model_id'
             return {
                 "brand": device_info.get("manufacturer", "Unknown"),
-                "model": device_info.get("model_id", "Unknown"),
+                "model": device_info.get("model", device_info.get("model_id", "Unknown")),
                 "serial_number": serial,
                 "units": units
             }
