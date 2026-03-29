@@ -57,12 +57,17 @@ fi
 # Build <Device> nodes for gateways
 # -------------------------------------------------------
 GATEWAY_XML=""
+CONFIGURED_GATEWAYS="" # Add this line
 GATEWAY_COUNT=$(jq '.gateways | length' "$CONFIG_PATH")
+
 i=0
 while [ "$i" -lt "$GATEWAY_COUNT" ]; do
     GW_BRAND=$(jq -r ".gateways[$i].brand"          "$CONFIG_PATH")
     GW_MODEL=$(jq -r ".gateways[$i].model"           "$CONFIG_PATH")
     GW_SERIAL=$(jq -r ".gateways[$i].serial_number"  "$CONFIG_PATH")
+    
+    CONFIGURED_GATEWAYS="${CONFIGURED_GATEWAYS} ${GW_SERIAL}" # Add this line
+    
     GW_NAME=$(jq -r ".gateways[$i].gateway_name"     "$CONFIG_PATH")
     GW_TYPE=$(jq -r ".gateways[$i].gateway_type"     "$CONFIG_PATH")
     GW_PORT=$(jq -r ".gateways[$i].port"             "$CONFIG_PATH")
@@ -114,6 +119,19 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
         DEV_BRAND=$(jq -r ".devices[$i].brand"          "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
         DEV_MODEL=$(jq -r ".devices[$i].model"           "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
         DEV_SERIAL=$(jq -r ".devices[$i].serial_number"  "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
+
+        IS_GATEWAY=0
+        for gw in $CONFIGURED_GATEWAYS; do
+            if [ "$gw" = "$DEV_SERIAL" ]; then
+                IS_GATEWAY=1
+                break
+            fi
+        done
+
+        if [ "$IS_GATEWAY" -eq 1 ]; then
+            i=$((i + 1))
+            continue
+        fi
 
         # Skip invalid entries
         if [ -z "$DEV_BRAND" ] || [ "$DEV_BRAND" = "null" ] || \
