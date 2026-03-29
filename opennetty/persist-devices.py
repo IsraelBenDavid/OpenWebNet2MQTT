@@ -101,10 +101,10 @@ class DevicePersistence:
                     except (ValueError, IndexError):
                         pass
 
-            # Check for standard 'model' field first, fallback to 'model_id'
+            # Use 'model_id' to get the raw hardware identifier required by OpenNetty's core
             return {
                 "brand": device_info.get("manufacturer", "Unknown"),
-                "model": device_info.get("model", device_info.get("model_id", "Unknown")),
+                "model": device_info.get("model_id", "Unknown"),
                 "serial_number": serial,
                 "units": units
             }
