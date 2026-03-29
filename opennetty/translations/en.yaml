@@ -36,16 +36,16 @@ configuration:
     description: Enable debug mode for detailed logging output (helpful for troubleshooting)
   scan_retry_no_response_delay:
     name: Scan Retry Delay (No Response)
-    description: Delay in seconds before retrying when no response is received during a discovery scan (default 2)
+    description: Delay in milliseconds before retrying when no response is received during a discovery scan (default 2000). Set to 0 for no delay.
   scan_retry_error_delay:
     name: Scan Retry Delay (Error)
-    description: Delay in seconds before retrying after an error during a discovery scan (default 3)
+    description: Delay in milliseconds before retrying after an error during a discovery scan (default 3000). Set to 0 for no delay.
   scan_inter_device_delay:
     name: Scan Inter-Device Delay
-    description: Delay in milliseconds between querying each device during a discovery scan (default 1000)
+    description: Delay in milliseconds between querying each device during a discovery scan (default 1000). Set to 0 for no delay.
   scan_query_timeout:
     name: Scan Query Timeout
-    description: Timeout in seconds for waiting for a product info response during a discovery scan (default 5)
+    description: Timeout in milliseconds for waiting for a product info response during a discovery scan (default 5000). Set to 0 for no timeout.
   gateways:
     name: Gateways
     description: OpenWebNet gateways that connect to your BTicino/Legrand devices

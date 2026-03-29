@@ -41,26 +41,26 @@ public sealed class OpenNettyMqttOptions
     public string RootTopic { get; set; } = default!;
 
     /// <summary>
-    /// Gets or sets the delay in seconds before retrying when no response
-    /// is received during a discovery scan (by default, 2 seconds).
+    /// Gets or sets the delay in milliseconds before retrying when no response
+    /// is received during a discovery scan (by default, 2000 ms).
     /// </summary>
-    public int ScanRetryNoResponseDelay { get; set; } = 2;
+    public int ScanRetryNoResponseDelay { get; set; } = 2000;
 
     /// <summary>
-    /// Gets or sets the delay in seconds before retrying after an error
-    /// during a discovery scan (by default, 3 seconds).
+    /// Gets or sets the delay in milliseconds before retrying after an error
+    /// during a discovery scan (by default, 3000 ms).
     /// </summary>
-    public int ScanRetryErrorDelay { get; set; } = 3;
+    public int ScanRetryErrorDelay { get; set; } = 3000;
 
     /// <summary>
     /// Gets or sets the delay in milliseconds between querying each device
-    /// during a discovery scan (by default, 1000 milliseconds).
+    /// during a discovery scan (by default, 1000 ms).
     /// </summary>
     public int ScanInterDeviceDelay { get; set; } = 1000;
 
     /// <summary>
-    /// Gets or sets the timeout in seconds for waiting for a product info
-    /// response during a discovery scan (by default, 5 seconds).
+    /// Gets or sets the timeout in milliseconds for waiting for a product info
+    /// response during a discovery scan (by default, 5000 ms).
     /// </summary>
-    public int ScanQueryTimeout { get; set; } = 5;
+    public int ScanQueryTimeout { get; set; } = 5000;
 }

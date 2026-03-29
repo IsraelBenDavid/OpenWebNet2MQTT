@@ -26,10 +26,10 @@ options:
   mqtt_tls_server_host: ""
   ha_discovery_culture: ""
   debug_logging: false
-  scan_retry_no_response_delay: 2
-  scan_retry_error_delay: 3
+  scan_retry_no_response_delay: 2000
+  scan_retry_error_delay: 3000
   scan_inter_device_delay: 1000
-  scan_query_timeout: 5
+  scan_query_timeout: 5000
   gateways: []
 schema:
   mqtt_server: str
@@ -43,10 +43,10 @@ schema:
   mqtt_tls_server_host: str?
   ha_discovery_culture: str?
   debug_logging: bool
-  scan_retry_no_response_delay: "int(1,30)?"
-  scan_retry_error_delay: "int(1,30)?"
-  scan_inter_device_delay: "int(100,10000)?"
-  scan_query_timeout: "int(1,30)?"
+  scan_retry_no_response_delay: "int(0,30000)?"
+  scan_retry_error_delay: "int(0,30000)?"
+  scan_inter_device_delay: "int(0,30000)?"
+  scan_query_timeout: "int(0,30000)?"
   gateways:
     - brand: list(Legrand|BTicino)
       model: str

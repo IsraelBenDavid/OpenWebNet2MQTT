@@ -3192,12 +3192,12 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                         }
                         
                         _logger.LogDebug("No response for product index {Index} on attempt {Attempt}. Retrying...", index, attempt);
-                        await Task.Delay(TimeSpan.FromSeconds(mqttOptions.ScanRetryNoResponseDelay), cancellationToken);
+                        await Task.Delay(TimeSpan.FromMilliseconds(mqttOptions.ScanRetryNoResponseDelay), cancellationToken);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogDebug(ex, "Error retrieving product info for index {Index} on attempt {Attempt}.", index, attempt);
-                        await Task.Delay(TimeSpan.FromSeconds(mqttOptions.ScanRetryErrorDelay), cancellationToken);
+                        await Task.Delay(TimeSpan.FromMilliseconds(mqttOptions.ScanRetryErrorDelay), cancellationToken);
                     }
                 }
 
@@ -3473,7 +3473,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
     /// The request frame format is *#13**66*index## which is specific to Zigbee USB gateways.
     /// </summary>
     private async Task<(OpenNettyAddress? Address, ImmutableArray<string> Values)?> QueryProductInfoAsync(
-        OpenNettyGateway gateway, int productIndex, int queryTimeoutSeconds, CancellationToken cancellationToken)
+        OpenNettyGateway gateway, int productIndex, int queryTimeoutMilliseconds, CancellationToken cancellationToken)
     {
         // Build the raw ProductInfo request frame: *#13**66*<index>##
         // This uses the DimensionRead format with the product index as a value,
@@ -3505,7 +3505,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         // Wait for the DimensionRead response with a timeout.
         var response = await notifications
             .FirstOrDefault()
-            .Timeout(TimeSpan.FromSeconds(queryTimeoutSeconds), AsyncObservable.Return<OpenNettyMessage>(null!))
+            .Timeout(TimeSpan.FromMilliseconds(queryTimeoutMilliseconds), AsyncObservable.Return<OpenNettyMessage>(null!))
             .RunAsync(cancellationToken);
 
         if (response is null)
