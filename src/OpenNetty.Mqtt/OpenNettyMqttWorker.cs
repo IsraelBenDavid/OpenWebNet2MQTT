@@ -3350,7 +3350,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                                     Device = updatedDevice,
                                     Gateway = zigbeeGateway,
                                     Medium = definition.Medium,
-                                    Name = $"Zigbee/{hexId}/{unitDef.Id}",
+                                    Name = $"zigbee/{hexId.ToLowerInvariant()}/{unitDef.Id}",
                                     Protocol = OpenNettyProtocol.Zigbee,
                                     Settings = ImmutableDictionary.Create<OpenNettySetting, string>(),
                                     Unit = updatedDevice.Units.FirstOrDefault(u => u.Definition.Id == unitDef.Id)
@@ -3389,7 +3389,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                     Device = newDevice,
                     Gateway = zigbeeGateway,
                     Medium = definition.Medium,
-                    Name = $"Zigbee/{hexId}",
+                    Name = $"zigbee/{hexId.ToLowerInvariant()}",
                     Protocol = OpenNettyProtocol.Zigbee,
                     Settings = ImmutableDictionary.Create<OpenNettySetting, string>()
                 });
@@ -3410,7 +3410,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                         Device = newDevice,
                         Gateway = zigbeeGateway,
                         Medium = definition.Medium,
-                        Name = $"Zigbee/{hexId}/{unitDef.Id}",
+                        Name = $"zigbee/{hexId.ToLowerInvariant()}/{unitDef.Id}",
                         Protocol = OpenNettyProtocol.Zigbee,
                         Settings = ImmutableDictionary.Create<OpenNettySetting, string>(),
                         Unit = unit
@@ -3599,16 +3599,24 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 }
             }
 
-            // Create device entry
+            // Create device entry with unit information so endpoints survive restart
+            var unitsArray = new JsonArray();
+            foreach (var unit in device.Units)
+            {
+                unitsArray.Add(new JsonObject
+                {
+                    ["unit_id"] = unit.Definition.Id
+                });
+            }
+
             var deviceEntry = new JsonObject
             {
                 ["brand"] = Enum.GetName(device.Identity.Brand),
                 ["model"] = device.Identity.Model,
                 ["serial_number"] = serialNumber,
-                ["units"] = new JsonArray()
+                ["units"] = unitsArray
             };
 
-            // Add units/endpoints if available
             if (devicesObject["devices"] is JsonArray devicesArray)
             {
                 devicesArray.Add(deviceEntry);

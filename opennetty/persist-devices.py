@@ -80,11 +80,32 @@ class DevicePersistence:
             if not serial:
                 return None
 
+            # Extract unit IDs from discovery components (light/switch entities
+            # have topics like "zigbee/<serial>/<unit_id>/switch_state/set")
+            units = []
+            seen_unit_ids = set()
+            components = payload.get("components", {})
+            for comp in components.values():
+                if not isinstance(comp, dict):
+                    continue
+                # Look for command topics that contain a unit ID segment
+                cmd_topic = comp.get("command_topic", "")
+                parts = cmd_topic.split("/")
+                # Expected format: opennetty/zigbee/<serial>/<unit_id>/<attr>/set
+                if len(parts) >= 5:
+                    try:
+                        unit_id = int(parts[3])
+                        if unit_id > 0 and unit_id not in seen_unit_ids:
+                            seen_unit_ids.add(unit_id)
+                            units.append({"unit_id": unit_id})
+                    except (ValueError, IndexError):
+                        pass
+
             return {
                 "brand": device_info.get("manufacturer", "Unknown"),
                 "model": device_info.get("model_id", "Unknown"),
                 "serial_number": serial,
-                "units": []  # Will be populated from components
+                "units": units
             }
         except Exception as e:
             print(f"⚠ Error parsing discovery payload: {e}")
