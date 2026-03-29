@@ -31,12 +31,25 @@ class DevicePersistence:
 
     def load_devices(self):
         """Load existing devices from /data/devices.json"""
+        
+        # Add configured gateways to the set so they are ignored by discovery
+        try:
+            if CONFIG_PATH.exists():
+                with open(CONFIG_PATH) as f:
+                    config = json.load(f)
+                    for gw in config.get("gateways", []):
+                        serial = gw.get("serial_number")
+                        if serial:
+                            self.device_serials.add(serial.lower())
+        except Exception as e:
+            print(f"⚠ Error loading gateways from config: {e}")
+
         if DEVICES_LIST_PATH.exists():
             try:
                 with open(DEVICES_LIST_PATH) as f:
                     self.discovered_devices = json.load(f)
                     for device in self.discovered_devices.get("devices", []):
-                        self.device_serials.add(device.get("serial_number", ""))
+                        self.device_serials.add(device.get("serial_number", "").lower())
                     print(f"✓ Loaded {len(self.discovered_devices['devices'])} devices from {DEVICES_LIST_PATH}")
             except Exception as e:
                 print(f"⚠ Error loading devices: {e}")
