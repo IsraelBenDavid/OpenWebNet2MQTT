@@ -155,7 +155,11 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
             # Use the custom base endpoint name if it exists
             if [ -n "$BASE_EP_NAME" ] && [ "$BASE_EP_NAME" != "null" ]; then
                 UNITS_XML="
-    <Endpoint Name=\"${BASE_EP_NAME}\" />"
+    <Endpoint Name=\"zigbee/${HEX_LOWER}\">
+      <Setting Name=\"Home Assistant light name\" Value=\"${BASE_EP_NAME}\" />
+      <Setting Name=\"Home Assistant switch name\" Value=\"${BASE_EP_NAME}\" />
+      <Setting Name=\"Home Assistant cover name\" Value=\"${BASE_EP_NAME}\" />
+    </Endpoint>"
             else
                 UNITS_XML="
     <Endpoint Name=\"zigbee/${HEX_LOWER}\" />"
@@ -182,7 +186,11 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
             if [ -n "$UNIT_NAME" ] && [ "$UNIT_NAME" != "null" ]; then
                 UNITS_XML="${UNITS_XML}
     <Unit Id=\"${UNIT_ID}\">
-      <Endpoint Name=\"${UNIT_NAME}\" />
+      <Endpoint Name=\"${DEFAULT_EP_NAME}\">
+        <Setting Name=\"Home Assistant light name\" Value=\"${UNIT_NAME}\" />
+        <Setting Name=\"Home Assistant switch name\" Value=\"${UNIT_NAME}\" />
+        <Setting Name=\"Home Assistant cover name\" Value=\"${UNIT_NAME}\" />
+      </Endpoint>
     </Unit>"
             else
                 UNITS_XML="${UNITS_XML}

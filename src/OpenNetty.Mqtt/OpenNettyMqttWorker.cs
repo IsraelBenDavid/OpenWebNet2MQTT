@@ -4019,7 +4019,30 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                         targetParentElement.Add(endpointElement);
                     }
 
-                    endpointElement.SetAttributeValue("Name", name);
+                    // Add/update Setting elements for all entity types instead of changing the Name attribute
+                    string[] settingNames = [
+                        "Home Assistant light name",
+                        "Home Assistant switch name",
+                        "Home Assistant cover name"
+                    ];
+
+                    foreach (var settingName in settingNames)
+                    {
+                        var settingElement = endpointElement.Elements("Setting")
+                            .FirstOrDefault(e => (string?)e.Attribute("Name") == settingName);
+
+                        if (settingElement is null)
+                        {
+                            endpointElement.Add(new XElement("Setting",
+                                new XAttribute("Name", settingName),
+                                new XAttribute("Value", name)));
+                        }
+                        else
+                        {
+                            settingElement.SetAttributeValue("Value", name);
+                        }
+                    }
+
                     break;
                 }
             }
