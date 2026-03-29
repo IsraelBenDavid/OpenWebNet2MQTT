@@ -3721,10 +3721,12 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 };
             }
         }
-
+        
+        _logger.LogInformation("Going inside PersistDeviceNameToXml function");
         PersistDeviceNameToXml(device.Identifier, name);
         
         // Execute JSON persistence
+        _logger.LogInformation("Going inside PersistDeviceNameToJson function");
         PersistDeviceNameToJson(device.Identifier, name);
     }
 
@@ -3951,10 +3953,11 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         {
             options.Endpoints[index] = updatedEndpoint;
         }
-
+        _logger.LogInformation("Going inside PersistEndpointNameToXml function");
         PersistEndpointNameToXml(endpoint, name);
         
         // Execute JSON persistence
+        _logger.LogInformation("Going inside PersistEndpointNameToJson function");
         PersistEndpointNameToJson(endpoint, name);
     }
 
