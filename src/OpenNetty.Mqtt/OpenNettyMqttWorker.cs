@@ -3735,44 +3735,56 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
     /// </summary>
     private void PersistDeviceNameToJson(OpenNettyDeviceIdentifier identifier, string name)
     {
-        var dataDir = "/data";
-        if (!Directory.Exists(dataDir))
-        {
-            return;
-        }
-
-        var jsonPath = Path.Combine(dataDir, "devices.json");
+        _logger.LogInformation("Attempting to persist device name to JSON...");
+        var jsonPath = "/data/devices.json";
+        
         if (!File.Exists(jsonPath))
         {
+            _logger.LogWarning("Could not find {Path}. Make sure the persistence script is running.", jsonPath);
             return;
         }
 
         try
         {
             var content = File.ReadAllText(jsonPath);
-            if (JsonNode.Parse(content) is JsonObject devicesObject && devicesObject["devices"] is JsonArray devicesArray)
+            var parsedNode = JsonNode.Parse(content);
+            
+            if (parsedNode is JsonObject devicesObject && devicesObject["devices"] is JsonArray devicesArray)
             {
+                bool modified = false;
                 foreach (var item in devicesArray)
                 {
                     if (item is JsonObject deviceObj)
                     {
-                        var sn = deviceObj["serial_number"]?.GetValue<string>();
+                        var sn = deviceObj["serial_number"]?.ToString();
                         if (string.Equals(sn, identifier.ToString(), StringComparison.OrdinalIgnoreCase))
                         {
                             deviceObj["name"] = name;
+                            modified = true;
                             break;
                         }
                     }
                 }
 
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                File.WriteAllText(jsonPath, devicesObject.ToJsonString(options));
-                _logger.LogInformation("Persisted device name '{Name}' to devices.json.", name);
+                if (modified)
+                {
+                    var options = new JsonSerializerOptions { WriteIndented = true };
+                    File.WriteAllText(jsonPath, devicesObject.ToJsonString(options));
+                    _logger.LogInformation("Successfully persisted device name '{Name}' to devices.json.", name);
+                }
+                else
+                {
+                    _logger.LogWarning("Device with serial {Serial} was not found in devices.json.", identifier.ToString());
+                }
+            }
+            else
+            {
+                _logger.LogWarning("devices.json has an invalid structure.");
             }
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "An error occurred while persisting the device name to the JSON configuration file.");
+            _logger.LogError(exception, "An error occurred while persisting the device name to the JSON configuration file.");
         }
     }
 
@@ -3781,38 +3793,41 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
     /// </summary>
     private void PersistEndpointNameToJson(OpenNettyEndpoint endpoint, string name)
     {
+        _logger.LogInformation("Attempting to persist endpoint name to JSON...");
+        
         if (endpoint.Device is null)
         {
+            _logger.LogWarning("Endpoint device is null, cannot persist to JSON.");
             return;
         }
 
-        var dataDir = "/data";
-        if (!Directory.Exists(dataDir))
-        {
-            return;
-        }
-
-        var jsonPath = Path.Combine(dataDir, "devices.json");
+        var jsonPath = "/data/devices.json";
         if (!File.Exists(jsonPath))
         {
+            _logger.LogWarning("Could not find {Path}. Make sure the persistence script is running.", jsonPath);
             return;
         }
 
         try
         {
             var content = File.ReadAllText(jsonPath);
-            if (JsonNode.Parse(content) is JsonObject devicesObject && devicesObject["devices"] is JsonArray devicesArray)
+            var parsedNode = JsonNode.Parse(content);
+            
+            if (parsedNode is JsonObject devicesObject && devicesObject["devices"] is JsonArray devicesArray)
             {
+                bool modified = false;
                 foreach (var item in devicesArray)
                 {
                     if (item is JsonObject deviceObj)
                     {
-                        var sn = deviceObj["serial_number"]?.GetValue<string>();
+                        var sn = deviceObj["serial_number"]?.ToString();
                         if (string.Equals(sn, endpoint.Device.Identifier.ToString(), StringComparison.OrdinalIgnoreCase))
                         {
+                            // If it has no unit, it's the base endpoint of the device
                             if (endpoint.Unit is null)
                             {
                                 deviceObj["base_endpoint_name"] = name;
+                                modified = true;
                             }
                             else if (deviceObj["units"] is JsonArray unitsArray)
                             {
@@ -3820,10 +3835,11 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                                 {
                                     if (unitItem is JsonObject unitObj)
                                     {
-                                        var unitId = unitObj["unit_id"]?.GetValue<int>();
-                                        if (unitId == endpoint.Unit.Definition.Id)
+                                        var unitIdStr = unitObj["unit_id"]?.ToString();
+                                        if (unitIdStr == endpoint.Unit.Definition.Id.ToString())
                                         {
                                             unitObj["endpoint_name"] = name;
+                                            modified = true;
                                             break;
                                         }
                                     }
@@ -3834,14 +3850,25 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                     }
                 }
 
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                File.WriteAllText(jsonPath, devicesObject.ToJsonString(options));
-                _logger.LogInformation("Persisted endpoint name '{Name}' to devices.json.", name);
+                if (modified)
+                {
+                    var options = new JsonSerializerOptions { WriteIndented = true };
+                    File.WriteAllText(jsonPath, devicesObject.ToJsonString(options));
+                    _logger.LogInformation("Successfully persisted endpoint name '{Name}' to devices.json.", name);
+                }
+                else
+                {
+                    _logger.LogWarning("Endpoint for device serial {Serial} was not found in devices.json.", endpoint.Device.Identifier.ToString());
+                }
+            }
+            else
+            {
+                _logger.LogWarning("devices.json has an invalid structure.");
             }
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "An error occurred while persisting the endpoint name to the JSON configuration file.");
+            _logger.LogError(exception, "An error occurred while persisting the endpoint name to the JSON configuration file.");
         }
     }
 
