@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
  * See https://github.com/opennetty/opennetty-core for more information concerning
  * the license and the contributors participating to this project.
@@ -184,10 +184,20 @@ public sealed class OpenNettyBuilder
         List<OpenNettyDevice> devices = [];
         List<OpenNettyEndpoint> endpoints = [];
         List<OpenNettyGateway> gateways = [];
+        
+        Dictionary<XElement, OpenNettyDevice> parsedDevices = [];
 
+        // 1. Parse gateways and their hosting devices
         foreach (var gateway in document.Root.Elements("Device").Elements("Gateway"))
         {
-            var device = GetDevice(gateways, gateway.Parent ?? throw new InvalidOperationException(SR.GetResourceString(SR.ID0073)));
+            var deviceElement = gateway.Parent ?? throw new InvalidOperationException(SR.GetResourceString(SR.ID0073));
+            
+            if (!parsedDevices.TryGetValue(deviceElement, out var device))
+            {
+                device = GetDevice(gateways, deviceElement);
+                devices.Add(device);
+                parsedDevices[deviceElement] = device;
+            }
 
             gateways.Add((string?) gateway.Attribute("Type") switch
             {
@@ -280,9 +290,15 @@ public sealed class OpenNettyBuilder
             });
         }
 
-        foreach (var device in document.Root.Elements("Device"))
+        // 2. Parse remaining devices
+        foreach (var deviceElement in document.Root.Elements("Device"))
         {
-            devices.Add(GetDevice(gateways, device));
+            if (!parsedDevices.TryGetValue(deviceElement, out var device))
+            {
+                device = GetDevice(gateways, deviceElement);
+                devices.Add(device);
+                parsedDevices[deviceElement] = device;
+            }
         }
 
         // Note: endpoint nodes are allowed to appear directly under the root configuration node,
@@ -293,14 +309,20 @@ public sealed class OpenNettyBuilder
         {
             var name = (string?) endpoint.Attribute("Name");
 
-            var device = endpoint.Parent?.Name == "Device"
-                ? GetDevice(gateways, endpoint.Parent)
-                :  endpoint.Parent?.Name == "Unit" && endpoint.Parent.Parent?.Name == "Device"
-                    ? GetDevice(gateways, endpoint.Parent.Parent)
+            var deviceElement = endpoint.Parent?.Name == "Device"
+                ? endpoint.Parent
+                : endpoint.Parent?.Name == "Unit" && endpoint.Parent.Parent?.Name == "Device"
+                    ? endpoint.Parent.Parent
                     : null;
 
-            var unit = device is not null && endpoint.Parent?.Name == "Unit" ? GetUnit(endpoint.Parent,
-                (byte?) (uint?) endpoint.Parent.Attribute("Id") ?? throw new InvalidOperationException(SR.FormatID0078("Id"))) : null;
+            OpenNettyDevice? device = deviceElement != null && parsedDevices.TryGetValue(deviceElement, out var parsedDevice)
+                ? parsedDevice
+                : null;
+
+            var unitId = endpoint.Parent?.Name == "Unit" ? (byte?) (uint?) endpoint.Parent.Attribute("Id") : null;
+            var unit = device is not null && unitId.HasValue
+                ? device.Units.FirstOrDefault(u => u.Definition.Id == unitId.Value)
+                : null;
 
             var type = (string?) endpoint.Attribute("Type") switch
             {
@@ -415,7 +437,7 @@ public sealed class OpenNettyBuilder
                             throw new InvalidOperationException(SR.GetResourceString(SR.ID0104));
                         }
 
-                        builder.Append(new string(device.Identifier.ToString().Where(char.IsAsciiDigit).ToArray()));
+                        builder.Append(new string(device.Identifier.ToString().Where(char.IsAsciiHexDigit).ToArray()).ToLowerInvariant());
 
                         if (unit is not null)
                         {
