@@ -3726,7 +3726,120 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         }
 
         PersistDeviceNameToXml(device.Identifier, name);
+        PersistDeviceNameToJson(device.Identifier, name);
     }
+
+
+/// <summary>
+    /// Persists a device name change to the devices.json file for Home Assistant add-on persistence.
+    /// </summary>
+    private void PersistDeviceNameToJson(OpenNettyDeviceIdentifier identifier, string name)
+    {
+        var dataDir = "/data";
+        if (!Directory.Exists(dataDir))
+        {
+            return;
+        }
+
+        var jsonPath = Path.Combine(dataDir, "devices.json");
+        if (!File.Exists(jsonPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var content = File.ReadAllText(jsonPath);
+            if (JsonNode.Parse(content) is JsonObject devicesObject && devicesObject["devices"] is JsonArray devicesArray)
+            {
+                foreach (var item in devicesArray)
+                {
+                    if (item is JsonObject deviceObj)
+                    {
+                        var sn = (string?)deviceObj["serial_number"];
+                        if (string.Equals(sn, identifier.ToString(), StringComparison.OrdinalIgnoreCase))
+                        {
+                            deviceObj["name"] = name;
+                            break;
+                        }
+                    }
+                }
+
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(jsonPath, JsonSerializer.Serialize(devicesObject, options));
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "An error occurred while persisting the device name to the JSON configuration file.");
+        }
+    }
+
+    /// <summary>
+    /// Persists an endpoint name change to the devices.json file for Home Assistant add-on persistence.
+    /// </summary>
+    private void PersistEndpointNameToJson(OpenNettyEndpoint endpoint, string name)
+    {
+        if (endpoint.Device is null)
+        {
+            return;
+        }
+
+        var dataDir = "/data";
+        if (!Directory.Exists(dataDir))
+        {
+            return;
+        }
+
+        var jsonPath = Path.Combine(dataDir, "devices.json");
+        if (!File.Exists(jsonPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var content = File.ReadAllText(jsonPath);
+            if (JsonNode.Parse(content) is JsonObject devicesObject && devicesObject["devices"] is JsonArray devicesArray)
+            {
+                foreach (var item in devicesArray)
+                {
+                    if (item is JsonObject deviceObj)
+                    {
+                        var sn = (string?)deviceObj["serial_number"];
+                        if (string.Equals(sn, endpoint.Device.Identifier.ToString(), StringComparison.OrdinalIgnoreCase))
+                        {
+                            // If it has no unit, it's the base endpoint of the device
+                            if (endpoint.Unit is null)
+                            {
+                                deviceObj["base_endpoint_name"] = name;
+                            }
+                            else if (deviceObj["units"] is JsonArray unitsArray)
+                            {
+                                foreach (var unitItem in unitsArray)
+                                {
+                                    if (unitItem is JsonObject unitObj && (byte?)unitObj["unit_id"] == endpoint.Unit.Definition.Id)
+                                    {
+                                        unitObj["endpoint_name"] = name;
+                                        break;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(jsonPath, JsonSerializer.Serialize(devicesObject, options));
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "An error occurred while persisting the endpoint name to the JSON configuration file.");
+        }
+    }
+
 
     /// <summary>
     /// Persists a device name change to the OpenNettyConfiguration.xml file.
@@ -3810,6 +3923,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         }
 
         PersistEndpointNameToXml(endpoint, name);
+        PersistEndpointNameToJson(endpoint, name);
     }
 
     /// <summary>
