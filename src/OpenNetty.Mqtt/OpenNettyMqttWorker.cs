@@ -3502,11 +3502,13 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
     {
         try
         {
+            // CRITICAL for Home Assistant Add-ons: OpenNettyConfiguration.xml is wiped and regenerated 
+            // on every restart by run.sh. We MUST save to /data/devices.json for persistence.
+            PersistNewDeviceToJson(device, defaultName);
+
             var path = Path.Combine(AppContext.BaseDirectory, "OpenNettyConfiguration.xml");
             if (!File.Exists(path))
             {
-                // If XML does not exist, persist to JSON instead
-                PersistNewDeviceToJson(device, defaultName);
                 return;
             }
 
@@ -3540,10 +3542,6 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
 
             _logger.LogInformation("Persisted new device {Brand} {Model} ({SerialNumber}) to OpenNettyConfiguration.xml.",
                 device.Identity.Brand, device.Identity.Model, serialNumber);
-
-            // Removed the call to PersistNewDeviceToJson(device, defaultName) here.
-            // Saving to both files causes the daemon to load the device twice on restart,
-            // resulting in duplicate entities in Home Assistant.
         }
         catch (Exception exception)
         {
