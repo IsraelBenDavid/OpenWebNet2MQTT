@@ -160,7 +160,7 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
 
             UNITS_XML="${UNITS_XML}
     <Unit Id=\"${UNIT_ID}\">
-      
+      <Endpoint${EP_ATTR} />
     </Unit>"
             j=$((j + 1))
         done
@@ -227,7 +227,7 @@ echo ""
 echo "Starting OpenNetty daemon (logging level: $LOG_LEVEL)..."
 
 # Start the Python persistence script in the background
-python3 /app/persist-devices.py &
+# python3 /app/persist-devices.py &
 
 # Run the daemon directly
 exec /app/opennetty-daemon
