@@ -116,9 +116,12 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
     DEVICE_COUNT=$(jq '.devices | length' "$DEVICES_LIST_PATH" 2>/dev/null || echo 0)
     i=0
     while [ "$i" -lt "$DEVICE_COUNT" ]; do
+        # Read device details including the custom names
         DEV_BRAND=$(jq -r ".devices[$i].brand"          "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
         DEV_MODEL=$(jq -r ".devices[$i].model"           "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
         DEV_SERIAL=$(jq -r ".devices[$i].serial_number"  "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
+        DEV_NAME=$(jq -r ".devices[$i].name"             "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
+        BASE_EP_NAME=$(jq -r ".devices[$i].base_endpoint_name" "$DEVICES_LIST_PATH" 2>/dev/null || echo "null")
 
         IS_GATEWAY=0
         for gw in $CONFIGURED_GATEWAYS; do
@@ -143,15 +146,20 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
 
         UNITS_XML=""
         # Determine whether the identifier is a MAC address or a Serial Number
-        # and explicitly declare the base endpoint name to ensure unique_id matches discovery.
         if echo "$DEV_SERIAL" | grep -q ":"; then
             ID_ATTR="MacAddress=\"${DEV_SERIAL}\""
         else
             ID_ATTR="SerialNumber=\"${DEV_SERIAL}\""
             HEX_LOWER=$(echo "$DEV_SERIAL" | tr '[:upper:]' '[:lower:]')
             
-            UNITS_XML="
+            # Use the custom base endpoint name if it exists
+            if [ -n "$BASE_EP_NAME" ] && [ "$BASE_EP_NAME" != "null" ]; then
+                UNITS_XML="
+    <Endpoint Name=\"${BASE_EP_NAME}\" />"
+            else
+                UNITS_XML="
     <Endpoint Name=\"zigbee/${HEX_LOWER}\" />"
+            fi
         fi
 
         UNIT_COUNT=$(jq ".devices[$i].units | length" "$DEVICES_LIST_PATH" 2>/dev/null || echo 0)
@@ -166,12 +174,11 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
             fi
 
             if echo "$DEV_SERIAL" | grep -q ":"; then
-               DEFAULT_EP_NAME="tcp_${UNIT_ID}" # Fallback for non-zigbee
+               DEFAULT_EP_NAME="tcp_${UNIT_ID}"
             else
                DEFAULT_EP_NAME="zigbee/${HEX_LOWER}/${UNIT_ID}"
             fi
 
-            # Force exact endpoint names to keep Home Assistant unique_ids stable
             if [ -n "$UNIT_NAME" ] && [ "$UNIT_NAME" != "null" ]; then
                 UNITS_XML="${UNITS_XML}
     <Unit Id=\"${UNIT_ID}\">
@@ -187,8 +194,13 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
             j=$((j + 1))
         done
 
+        NAME_ATTR=""
+        if [ -n "$DEV_NAME" ] && [ "$DEV_NAME" != "null" ]; then
+            NAME_ATTR="Name=\"${DEV_NAME}\""
+        fi
+
         DEVICE_XML="${DEVICE_XML}
-  <Device Brand=\"${DEV_BRAND}\" Model=\"${DEV_MODEL}\" ${ID_ATTR}>${UNITS_XML}
+  <Device Brand=\"${DEV_BRAND}\" Model=\"${DEV_MODEL}\" ${ID_ATTR} ${NAME_ATTR}>${UNITS_XML}
   </Device>
 "
         i=$((i + 1))
