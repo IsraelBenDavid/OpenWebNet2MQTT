@@ -113,6 +113,13 @@ done
 DEVICE_XML=""
 if [ -f "$DEVICES_LIST_PATH" ]; then
     echo "Loading devices from internal list..."
+    
+    # Self-heal: Deduplicate the JSON file by serial_number to fix any corruption
+    TMP_DEVICES=$(mktemp)
+    if jq '{devices: .devices | unique_by(.serial_number)}' "$DEVICES_LIST_PATH" > "$TMP_DEVICES"; then
+        mv "$TMP_DEVICES" "$DEVICES_LIST_PATH"
+    fi
+
     DEVICE_COUNT=$(jq '.devices | length' "$DEVICES_LIST_PATH" 2>/dev/null || echo 0)
     i=0
     while [ "$i" -lt "$DEVICE_COUNT" ]; do
