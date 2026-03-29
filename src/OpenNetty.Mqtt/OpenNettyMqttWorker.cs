@@ -2998,12 +2998,11 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         static string ComputeEntityUniqueId(OpenNettyEndpoint endpoint, ReadOnlySpan<byte> discriminator)
         {
             var hash = new XxHash128();
-            hash.Append(MemoryMarshal.AsBytes<char>(endpoint.Name));
+            hash.Append(MemoryMarshal.AsBytes<char>(endpoint.Address.ToString()));
             hash.Append(discriminator);
-
+        
             return Base64Url.EncodeToString(hash.GetCurrentHash());
         }
-
         static string ComputeEntityName(string name, OpenNettyEndpoint endpoint, CultureInfo culture, int count)
         {
             if (count is < 2)
