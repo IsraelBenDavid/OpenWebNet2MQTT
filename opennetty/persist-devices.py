@@ -76,12 +76,22 @@ class DevicePersistence:
             latest_data = self.discovered_devices
 
         if new_device_info:
-            latest_data["devices"].append(new_device_info)
+            new_serial = new_device_info.get("serial_number", "").lower()
+            
+            # Prevent duplicates by checking if the serial already exists in the file
+            exists = False
+            for d in latest_data.get("devices", []):
+                if d.get("serial_number", "").lower() == new_serial:
+                    exists = True
+                    break
+                    
+            if not exists:
+                latest_data["devices"].append(new_device_info)
             
         try:
             with open(DEVICES_LIST_PATH, 'w') as f:
                 json.dump(latest_data, f, indent=2)
-            print(f"✓ Saved {len(latest_data['devices'])} devices to {DEVICES_LIST_PATH}")
+            print(f"✓ Saved {len(latest_data.get('devices', []))} devices to {DEVICES_LIST_PATH}")
             self.discovered_devices = latest_data
         except Exception as e:
             print(f"✗ Error saving devices: {e}")
