@@ -3191,12 +3191,12 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                         }
                         
                         _logger.LogDebug("No response for product index {Index} on attempt {Attempt}. Retrying...", index, attempt);
-                        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken); // Wait 1s before retrying
+                        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken); // Wait 1s before retrying
                     }
                     catch (Exception ex)
                     {
                         _logger.LogDebug(ex, "Error retrieving product info for index {Index} on attempt {Attempt}.", index, attempt);
-                        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken); // Wait 1s before retrying on error
+                        await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken); // Wait 1s before retrying on error
                     }
                 }
 
@@ -3248,7 +3248,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                 }
 
                 // Give the Zigbee gateway a short breather before asking for the next index
-                await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationToken);
+                await Task.Delay(TimeSpan.FromMilliseconds(1000), cancellationToken);
             }
 
             _logger.LogInformation("Discovery scan found {Count} unique device identifier(s).", discoveredDevices.Count);
