@@ -164,8 +164,15 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
             j=$((j + 1))
         done
 
+        # Determine whether the identifier is a MAC address or a Serial Number
+        if echo "$DEV_SERIAL" | grep -q ":"; then
+            ID_ATTR="MacAddress=\"${DEV_SERIAL}\""
+        else
+            ID_ATTR="SerialNumber=\"${DEV_SERIAL}\""
+        fi
+
         DEVICE_XML="${DEVICE_XML}
-  <Device Brand=\"${DEV_BRAND}\" Model=\"${DEV_MODEL}\" SerialNumber=\"${DEV_SERIAL}\">${UNITS_XML}
+  <Device Brand=\"${DEV_BRAND}\" Model=\"${DEV_MODEL}\" ${ID_ATTR}>${UNITS_XML}
   </Device>
 "
         i=$((i + 1))
