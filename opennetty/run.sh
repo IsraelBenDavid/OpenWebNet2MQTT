@@ -153,12 +153,15 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
                 continue
             fi
 
-            # ONLY generate the XML tags if there is a custom endpoint name to apply
+            # Always generate the XML tag to prevent OpenNetty from duplicating discovered units
             if [ -n "$UNIT_NAME" ] && [ "$UNIT_NAME" != "null" ]; then
                 UNITS_XML="${UNITS_XML}
     <Unit Id=\"${UNIT_ID}\">
       <Endpoint Name=\"${UNIT_NAME}\" />
     </Unit>"
+            else
+                UNITS_XML="${UNITS_XML}
+    <Unit Id=\"${UNIT_ID}\" />"
             fi
             
             j=$((j + 1))
