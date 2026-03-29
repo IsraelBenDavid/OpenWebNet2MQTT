@@ -153,14 +153,14 @@ if [ -f "$DEVICES_LIST_PATH" ]; then
                 continue
             fi
 
-            EP_ATTR=""
+            # ONLY generate the XML tags if there is a custom endpoint name to apply
             if [ -n "$UNIT_NAME" ] && [ "$UNIT_NAME" != "null" ]; then
-                EP_ATTR=" Name=\"${UNIT_NAME}\""
-            fi
-
-            UNITS_XML="${UNITS_XML}
+                UNITS_XML="${UNITS_XML}
     <Unit Id=\"${UNIT_ID}\">
+      <Endpoint Name=\"${UNIT_NAME}\" />
     </Unit>"
+            fi
+            
             j=$((j + 1))
         done
 
