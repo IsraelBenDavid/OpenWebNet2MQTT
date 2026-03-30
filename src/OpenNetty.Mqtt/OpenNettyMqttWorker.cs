@@ -3419,6 +3419,7 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                         }
 
                         UpdateDeviceModelInXml(identifier, model);
+                        UpdateDeviceModelInJson(identifier, model, updatedDevice.Units);
                         discoveredCount++;
                     }
                     continue;
@@ -3729,6 +3730,64 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
         }
     }
 
+
+    /// <summary>
+    /// Updates the model and units of an existing device in the /data/devices.json file.
+    /// This ensures model changes persist across daemon restarts in Home Assistant add-on environments.
+    /// </summary>
+    private void UpdateDeviceModelInJson(OpenNettyDeviceIdentifier identifier, string newModel, IReadOnlyList<OpenNettyUnit> units)
+    {
+        try
+        {
+            var dataDir = "/data";
+            if (!Directory.Exists(dataDir)) return;
+
+            var jsonPath = Path.Combine(dataDir, "devices.json");
+            if (!File.Exists(jsonPath)) return;
+
+            var content = File.ReadAllText(jsonPath);
+            if (JsonNode.Parse(content) is not JsonObject devicesObject ||
+                devicesObject["devices"] is not JsonArray devicesArray)
+            {
+                return;
+            }
+
+            var targetId = identifier.ToString();
+
+            foreach (var item in devicesArray)
+            {
+                if (item is JsonObject deviceObj)
+                {
+                    var sn = (string?)deviceObj["serial_number"];
+                    if (!string.IsNullOrEmpty(sn) && string.Equals(sn, targetId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        deviceObj["model"] = newModel;
+
+                        var unitsArray = new JsonArray();
+                        foreach (var unit in units)
+                        {
+                            // Cast to JsonNode to avoid AOT generic type resolution errors
+                            unitsArray.Add((JsonNode)new JsonObject
+                            {
+                                ["unit_id"] = unit.Definition.Id
+                            });
+                        }
+                        deviceObj["units"] = unitsArray;
+
+                        break;
+                    }
+                }
+            }
+
+            File.WriteAllText(jsonPath, devicesObject.ToJsonString());
+
+            _logger.LogInformation("Updated device {Identifier} to model {NewModel} in /data/devices.json.", targetId, newModel);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "An error occurred while updating the device model in the JSON configuration file.");
+        }
+    }
 
     /// <summary>
     /// Renames a device by updating its in-memory settings and persisting
