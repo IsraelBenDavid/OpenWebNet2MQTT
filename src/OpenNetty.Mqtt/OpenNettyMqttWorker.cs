@@ -2904,6 +2904,45 @@ public sealed class OpenNettyMqttWorker : IOpenNettyMqttWorker
                         .WithRetainFlag()
                         .WithTopic($"{options.RootTopic}/{deviceNameTopic}/{OpenNettyMqttAttributes.DeviceName}")
                         .Build());
+
+                    // Add an "Address" diagnostic sensor to display the device serial/address in decimal.
+                    {
+                        var identifierValue = device.Identifier.Value;
+                        string decimalAddress;
+
+                        if (device.Identifier.Type is OpenNettyDeviceIdentifierType.ScsSerialNumber or
+                                                      OpenNettyDeviceIdentifierType.ZigbeeSerialNumber)
+                        {
+                            decimalAddress = uint.TryParse(identifierValue, NumberStyles.HexNumber,
+                                CultureInfo.InvariantCulture, out var parsed)
+                                ? parsed.ToString(CultureInfo.InvariantCulture)
+                                : identifierValue;
+                        }
+                        else
+                        {
+                            decimalAddress = identifierValue;
+                        }
+
+                        components.Add(CreateEntityNode(new JsonObject
+                        {
+                            ["platform"] = "sensor",
+                            ["unique_id"] = ComputeEntityUniqueId(firstEndpoint, "b3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e"u8),
+                            ["entity_category"] = "diagnostic",
+                            ["icon"] = "mdi:identifier",
+                            ["name"] = "Address",
+                            ["availability_topic"] = $"{options.RootTopic}/{deviceNameTopic}/{OpenNettyMqttAttributes.Availability}",
+                            ["state_topic"] = $"{options.RootTopic}/{deviceNameTopic}/{OpenNettyMqttAttributes.DeviceAddress}",
+                            ["enabled_by_default"] = true
+                        }));
+
+                        await client.EnqueueAsync(new MqttApplicationMessageBuilder()
+                            .WithPayload(decimalAddress)
+                            .WithPayloadFormatIndicator(MqttPayloadFormatIndicator.CharacterData)
+                            .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.ExactlyOnce)
+                            .WithRetainFlag()
+                            .WithTopic($"{options.RootTopic}/{deviceNameTopic}/{OpenNettyMqttAttributes.DeviceAddress}")
+                            .Build());
+                    }
                 }
             }
 

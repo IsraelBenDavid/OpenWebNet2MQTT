@@ -27,6 +27,11 @@ public static class OpenNettyMqttAttributes
     public const string BatteryAlert = "battery_alert";
 
     /// <summary>
+    /// Device address.
+    /// </summary>
+    public const string DeviceAddress = "device_address";
+
+    /// <summary>
     /// Device name.
     /// </summary>
     public const string DeviceName = "device_name";
