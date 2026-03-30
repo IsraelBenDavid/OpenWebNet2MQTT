@@ -1,6 +1,6 @@
 name: OpenNetty
 description: OpenWebNet/MQTT gateway for BTicino and Legrand home automation devices
-version: 1.0.3
+version: 1.0.4
 slug: opennetty
 url: https://github.com/IsraelBenDavid/opennetty-core
 arch:
